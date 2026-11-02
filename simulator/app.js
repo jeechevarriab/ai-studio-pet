@@ -99,11 +99,12 @@ function revealControls(visible = true) {
     $('message-title').textContent = activeNotice.title;
     $('message-body').textContent = activeNotice.body;
   }
-  if (activeNotice || (visible && (state.mode === 'surf'||state.mode==='work'&&studioReport?.online&&studioReport.agents.some(a=>a.status==='working'||a.status==='attention')))) return;
+  if (activeNotice || (visible && (state.mode === 'surf'||state.mode==='work'))) return;
   if (visible) controlsTimer = setTimeout(() => {
     if ($('device').contains(document.activeElement) && document.activeElement.matches('button')) return revealControls();
     $('device').classList.remove('controls-visible');
     attentionTarget = 0;
+    syncPlayPanel();
   }, customDesign.menuSeconds*1000);
 }
 

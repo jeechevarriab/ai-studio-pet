@@ -42,7 +42,12 @@ fabricated into percentages or completion claims.
 The relay is running in this session. After restarting Windows, start it with
 gateway/Start-Relay.ps1 (do not start a duplicate while it is already running).
 Automatic Windows startup remains a separate approval, not an installed feature.
+The helper's full location is C:/Users/Chapito/Desktop/AI STUDIO/Codex Source Folders/AI STUDIO PET/ai-studio-pet/gateway/Start-Relay.ps1.
 If the PC/relay is unavailable, WORK clearly shows Connection paused.
+
+WORK and PLAY stay in the readable menu/half-face pose until dismissed. Timer
+expiration on other pages also synchronizes all panels to prevent a panel from
+remaining over the quiet mascot after its header hides.
 
 Verified: 24 local tests plus hosted API authorization/CSRF/revision/persistence/
 relay checks. A live report had exactly five agents and the allowed fields.
