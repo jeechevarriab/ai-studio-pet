@@ -1,5 +1,13 @@
 # Progress — 2026-11-02
 
+## Public app authorized and published
+
+Owner explicitly approved making only the mascot public for iPhone access.
+Separate Sites release at https://studio-mascot.jesse-ech.chatgpt.site;
+private repo and studio services remain unchanged. No tunnel, firewall change,
+dashboard/agent access or local service exposure. See app-launch.md for release
+identity and browser-side forecast transport difference.
+
 ## App-only launch view
 
 Added `/app` with black surround, centered device, favicon/home-screen icons,

@@ -1,5 +1,21 @@
 # Studio Mascot app launch
 
+## Public iPhone link (owner approved 2026-11-02)
+
+https://studio-mascot.jesse-ech.chatgpt.site
+
+Published with Sites as a separate allowlisted app copy. Site ID:
+appgprj_6ae8a58aa97481919638d5a4382c9127. Deployment version 3;
+source commit 29b9974524475b9695d3cee0d49041733fe3532f in its separate
+Sites source repository. Working copy: sibling mascot-public-site folder.
+It exposes no desktop service or private repo. Public PLAY uses browser-side
+reads to the three fixed Open-Meteo/NOAA endpoints because the host's marine
+request was rejected. It retains the existing model labels and energy estimate.
+
+Open in iPhone Safari, Share → Add to Home Screen → Open as Web App (if offered)
+→ Add. Physical iPhone installation and motion sensors remain untested here.
+The local link below continues to be the development preview.
+
 Launch http://127.0.0.1:4173/app on the Windows computer running `node tools/serve.mjs`.
 The app-only route has a black surround, a centered responsive 410 × 502 device,
 and no outer playground. Tap the device to use the existing menus and gestures.
