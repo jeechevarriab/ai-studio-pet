@@ -32,6 +32,9 @@ export function createServer() {
   return http.createServer(async (req, res) => {
     if (!/^(127\.0\.0\.1|localhost)(:\d+)?$/.test(req.headers.host || '')) {res.writeHead(403); return res.end('Local preview only');}
     if (!['GET', 'HEAD'].includes(req.method)) {res.writeHead(405, {Allow: 'GET, HEAD'}); return res.end();}
+    if(req.url?.split('?')[0]==='/customize'){
+      res.writeHead(302,{Location:'https://studio-mascot.jesse-ech.chatgpt.site/customize','Cache-Control':'no-store'});return res.end();
+    }
     if (req.url === '/api/surf') {
       try {
         const data = JSON.stringify(await readSurf());

@@ -223,7 +223,8 @@ function asciiEyes(ctx, points, radius, eyes, time, still) {
   ctx.save();const alpha=ctx.globalAlpha;
   ctx.textAlign='center';ctx.textBaseline='middle';
   ctx.font=`600 ${Math.max(4.5,radius*2.85)}px ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace`;
-  if(eyes.luminous){ctx.shadowColor='#61dcff';ctx.shadowBlur=1;}
+  // Match PLAY's ink weight and edge softness on every page; only the tint varies.
+  ctx.shadowColor=eyes.luminous?'#61dcff':eyes.color;ctx.shadowBlur=1;
   for(let layer=0;layer<3;layer++) {
     const opacity=alpha*[.78,.92,1][layer];ctx.fillStyle=colors[layer];
     for(const m of marks)if(m.layer===layer){

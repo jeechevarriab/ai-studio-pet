@@ -128,3 +128,9 @@ Added exact official Muse source pin with preserved notices. Relevant official d
 Automated behavior/server checks: eight passed after correcting a test fixture to send a real Host header (Node fetch normalized the original test's header). Final syntax/data checks passed. Browser interaction checks exercised all four modes and expressions, desktop/mobile swipes, keyboard navigation, task events, weather, time-of-day and pause. Responsive layout inspected at desktop, 390 and 320 CSS-pixel widths. Screenshots were saved outside the repository for review. No app-origin JavaScript error was observed; unrelated browser-extension warnings were visible. No frame-rate or physical-device performance claim is made.
 
 Next: owner review of visual behavior; separately approve/install an isolated ESP-IDF environment and compile the pinned source; then implement the original character renderer for firmware. Sixth-agent permission isolation/activation remains a separate unfinished setup item. Do not connect real studio events or expand network access without the required approval.
+
+## Color Apply and consistent ASCII lettering — 2026-11-02
+
+Published Sites version 12. All V2 ASCII eyes share PLAY's font weight and one-pixel edge softness, preserving per-mode tints. Color controls handle both input and change events without duplicate history entries. The editor shows owner/save access above the controls and explains disabled Apply buttons. Local /customize redirects to the synced owner-only editor; no local anonymous write route was added.
+
+Verification: 25 private tests, syntax/data checks, hosted artifact checks and API authorization/persistence/relay checks passed. Signed-in Chrome UI confirmed that changing LIVE color activates its Apply button; Undo restored the user's original color without saving a test value. Existing cloud preferences were preserved.

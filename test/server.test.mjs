@@ -8,6 +8,9 @@ test('local server serves only simulator assets and rejects writes, spoofed host
   try {
     for (const asset of ['/', '/app', '/app/', '/simulator/app-view.js', '/sw.js', '/manifest.webmanifest', '/icons/mascot.svg', '/icons/mascot-192.png', '/icons/mascot-512.png', '/simulator/app.js', '/simulator/style.css', '/character/expressions.json', '/scenes/behavior.json']) assert.equal((await fetch(url + asset)).status, 200);
     const manifest = await (await fetch(url + '/manifest.webmanifest')).json();
+    const editor=await fetch(url+'/customize',{redirect:'manual'});
+    assert.equal(editor.status,302);
+    assert.equal(editor.headers.get('location'),'https://studio-mascot.jesse-ech.chatgpt.site/customize');
     assert.equal(manifest.start_url, '/app?mascot=v2');
     assert.equal(manifest.display, 'standalone');
     for (const icon of manifest.icons) {

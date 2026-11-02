@@ -7,12 +7,14 @@ export async function connectDesignEditor({preview,apply,mode}){
  const notify=message=>{status.textContent=message;};
  const button=(label,action,cls='')=>{const b=document.createElement('button');b.type='button';b.textContent=label;b.className=cls;b.addEventListener('click',action);return b;};
  const controls=new Map(),outputs=new Map(),undos=new Map(),applies=new Map();
+ let accessNotice=null;
  const refresh=()=>{
   for(const group of DESIGN_GROUPS)for(const f of group.fields){const input=controls.get(f.key);if(!input)continue;
    if(f.type==='checkbox')input.checked=draft[f.key];else input.value=draft[f.key];
    if(outputs.has(f.key))outputs.get(f.key).textContent=String(draft[f.key]);
    undos.get(f.key).disabled=!history[f.key]?.length;
    applies.get(f.key).disabled=loading||saving||!owner||draft[f.key]===applied[f.key];
+   applies.get(f.key).title=loading?'Loading your design':!owner?'Sign in with the owner account to save':saving?'Saving…':draft[f.key]===applied[f.key]?'Change this setting to activate Apply':'Save this setting across devices';
   }
   if(saveButton)saveButton.disabled=loading||saving||!owner;
  };
@@ -40,6 +42,7 @@ export async function connectDesignEditor({preview,apply,mode}){
   const title=document.createElement('h1');title.textContent='Make it yours.';header.append(title);
   const copy=document.createElement('p');copy.textContent='A little companion. Your personality.';header.append(copy);
   const close=document.createElement('a');close.href='/app';close.textContent='Open Mascot ↗';header.append(close);shell.append(header);
+  accessNotice=document.createElement('div');accessNotice.className='editor-access';accessNotice.setAttribute('role','status');accessNotice.textContent='Connecting to your saved design…';header.append(accessNotice);
   const modes=document.createElement('div');modes.className='editor-mode-picker';
   for(const [value,label]of [['live','LIVE'],['work','WORK'],['surf','PLAY'],['sleep','SLEEP']])modes.append(button(label,()=>{mode(value);modes.querySelectorAll('button').forEach(b=>b.classList.toggle('selected',b.textContent===label));}));
   modes.firstChild.classList.add('selected');shell.append(modes);
@@ -60,7 +63,9 @@ export async function connectDesignEditor({preview,apply,mode}){
     let dragging=false,recorded=false;
     input.addEventListener('pointerdown',()=>{dragging=true;recorded=false;});
     for(const event of ['pointerup','pointercancel','change','blur'])input.addEventListener(event,()=>{dragging=false;});
-    input.addEventListener('input',()=>{if(loading)return;try{const value=f.type==='range'?Number(input.value):f.type==='checkbox'?input.checked:input.value;const changed=value!==draft[f.key];draft=editValue(draft,dragging&&recorded?{}:history,f.key,value);if(dragging&&changed)recorded=true;preview(draft);refresh();notify('Previewing changes. Apply to save across devices.');}catch(error){notify(error.message);}});
+    const changedInput=()=>{if(loading)return;try{const value=f.type==='range'?Number(input.value):f.type==='checkbox'?input.checked:input.value;const changed=value!==draft[f.key];if(!changed)return;draft=editValue(draft,dragging&&recorded?{}:history,f.key,value);if(dragging)recorded=true;preview(draft);refresh();notify('Previewing changes. Apply to save across devices.');}catch(error){notify(error.message);}};
+    input.addEventListener('input',changedInput);
+    input.addEventListener('change',changedInput);
     controls.set(f.key,input);row.append(label,input,actions);section.append(row);
    }shell.append(section);
   }
@@ -76,9 +81,9 @@ export async function connectDesignEditor({preview,apply,mode}){
  draft={...applied};loading=false;
  if(editing){
   try{const response=await fetch('/api/session',{cache:'no-store'});const session=await response.json();owner=session.owner===true;
-   if(owner)notify('Owner signed in. Changes preview instantly; Apply saves them.');
-   else{const link=document.createElement('a');link.href='/signin-with-chatgpt?return_to=%2Fcustomize';link.target='_top';link.textContent=session.signedIn?'Sign in with your owner account':'Sign in to save your design';link.className='editor-signin';status.after(link);notify('Explore and preview. Only the owner can save.');}
-  }catch{notify('Preview mode. Open the live site and sign in to save.');}refresh();
+   if(owner){accessNotice.textContent='Owner signed in · Saving enabled';notify('Owner signed in. Changes preview instantly; Apply saves them.');}
+   else{const link=document.createElement('a');link.href='/signin-with-chatgpt?return_to=%2Fcustomize';link.target='_top';link.textContent=session.signedIn?'Sign in with your owner account':'Sign in to activate Apply';link.className='editor-signin';accessNotice.textContent='Sign in to save your changes across devices.';accessNotice.append(link);notify('Explore and preview. Only the owner can save.');}
+  }catch{accessNotice.textContent='Saving is unavailable. Open the synced editor and sign in.';const link=document.createElement('a');link.href='https://studio-mascot.jesse-ech.chatgpt.site/customize';link.textContent='Open synced editor';accessNotice.append(link);notify('Preview mode. Open the live site and sign in to save.');}refresh();
  }else{
   // Refresh on return to the app, without overwriting an unsaved editor draft.
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)void refreshSaved().then(accept).catch(()=>{});});
