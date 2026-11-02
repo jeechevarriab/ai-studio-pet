@@ -95,6 +95,8 @@ export function renderSceneV1(ctx, {activity, definition, time = 0, reducedMotio
 // apart from its export name; behavior, controls and expression data stay shared.
 const floatingCaches = new Map();
 const materialMasks = new Map();
+const reliefMasks = new Map();
+const lightingCanvases = new Map();
 const defaultPresentationV2 = {modeColors: {live: '#66f4d5', work: '#ff392c', surf: '#b4f483', sleep: '#b2a9ee'}, idle: {eyeScale: 1.65}, task: {width: 338, height: 300, radius: 112, feather: 13, eyeScale: 1.35}};
 
 function noise(x,y) {
@@ -106,10 +108,24 @@ function cloud(x,y) {
   const sx=fx*fx*(3-2*fx),sy=fy*fy*(3-2*fy);
   return (noise(ix,iy)*(1-sx)+noise(ix+1,iy)*sx)*(1-sy)+(noise(ix,iy+1)*(1-sx)+noise(ix+1,iy+1)*sx)*sy;
 }
+// A rounded volume: 1 is the forward surface, 0 is the receding silhouette.
+// Geometry only; no camera, photo processing or sensor data is stored here.
+export function surfaceDepth(x,y,width=338,height=300) {
+  const nx=Math.abs((x-205)/(width*.5)),ny=Math.abs((y-249)/(height*.5));
+  const radius=Math.cbrt(nx**3+ny**3);
+  return Math.sqrt(Math.max(0,1-radius*radius));
+}
+export function depthLighting(motion={x:0,y:0},time=0,still=false) {
+  const clamp=(value,limit)=>Math.max(-limit,Math.min(limit,Number.isFinite(value)?value:0));
+  const x=still?0:clamp(motion.x,6),y=still?0:clamp(motion.y,4);
+  const drift=still?0:Math.sin(time/5200)*2;
+  return {lightX:174+x*5+drift,lightY:205+y*5,shadowX:274-x*4,shadowY:338-y*4};
+}
 function materialMask(width,height,radius,feather) {
   const key=[width,height,radius,feather].join(':');
   if(materialMasks.has(key))return materialMasks.get(key);
   const canvas=new OffscreenCanvas(410,502),c=canvas.getContext('2d'),image=c.createImageData(410,502);
+  const relief=new OffscreenCanvas(410,502),rc=relief.getContext('2d'),shading=rc.createImageData(410,502);
   for(let y=0;y<502;y++)for(let x=0;x<410;x++) {
     const mottle=cloud(x/19,y/19)*.65+cloud(x/7,y/7)*.35;
     const qx=Math.abs(x-205)-width/2+radius,qy=Math.abs(y-249)-height/2+radius;
@@ -119,8 +135,12 @@ function materialMask(width,height,radius,feather) {
     const lowerFade=1-Math.max(0,Math.min(1,(y-290)/170))**1.5;
     const alpha=coverage*lowerFade*(.87+mottle*.1+noise(x,y)*.03);
     const i=(y*410+x)*4;image.data[i]=image.data[i+1]=image.data[i+2]=255;image.data[i+3]=Math.round(alpha*255);
+    // The depth field supplies soft edge occlusion without hard contour bands.
+    shading.data[i+3]=Math.round((1-surfaceDepth(x,y,width,height))*.43*coverage*255);
   }
-  c.putImageData(image,0,0);if(materialMasks.size>=8)materialMasks.clear();materialMasks.set(key,canvas);return canvas;
+  c.putImageData(image,0,0);rc.putImageData(shading,0,0);
+  if(materialMasks.size>=8){materialMasks.clear();reliefMasks.clear();}
+  materialMasks.set(key,canvas);reliefMasks.set(key,relief);return canvas;
 }
 // Each page owns a distinct canvas: drawing the incoming page must never repaint
 // the outgoing page's cached texture or borrow its throttle window.
@@ -141,6 +161,7 @@ export function floatingBody(definition, color, time, page = 'live') {
   c.fillStyle = gradient; c.fillRect(0, 0, 410, 502);
   c.globalCompositeOperation='destination-in';c.drawImage(materialMask(width,height,radius,feather),0,0);
   c.globalCompositeOperation = 'source-atop';
+  c.drawImage(reliefMasks.get([width,height,radius,feather].join(':')),0,0);
   const shade = c.createRadialGradient(287,382,0,260,350,250);
   shade.addColorStop(0, definition.body.shadowColor + '8a');
   shade.addColorStop(1, definition.body.shadowColor + '00');
@@ -153,6 +174,22 @@ export function floatingBody(definition, color, time, page = 'live') {
   }
   if(floatingCaches.size>=16&&!cached)floatingCaches.clear();
   floatingCaches.set(slot,{color,canvas,updatedAt:performance.now()});
+  return canvas;
+}
+
+function litBody(image,definition,motion,time,still,page) {
+  // Per-page scratch surfaces retain the swipe isolation; light moves smoothly
+  // every frame over a static depth/texture field, with no regenerated noise.
+  let canvas=lightingCanvases.get(page);
+  if(!canvas){canvas=new OffscreenCanvas(410,502);lightingCanvases.set(page,canvas);}
+  const c=canvas.getContext('2d'),light=depthLighting(motion,time,still),dark=definition.body.darkSurface;
+  c.setTransform(1,0,0,1,0,0);c.globalAlpha=1;c.globalCompositeOperation='source-over';c.clearRect(0,0,410,502);c.drawImage(image,0,0);
+  c.globalCompositeOperation='source-atop';
+  const highlight=c.createRadialGradient(light.lightX,light.lightY,4,light.lightX,light.lightY,170);
+  highlight.addColorStop(0,dark?'#197d9c0a':'#f3fff932');highlight.addColorStop(.5,dark?'#197d9c05':'#f3fff914');highlight.addColorStop(1,'#ffffff00');
+  c.fillStyle=highlight;c.fillRect(0,0,410,502);
+  const shadow=c.createRadialGradient(light.shadowX,light.shadowY,10,light.shadowX,light.shadowY,205);
+  shadow.addColorStop(0,'#00080d30');shadow.addColorStop(1,'#00080d00');c.fillStyle=shadow;c.fillRect(0,0,410,502);
   return canvas;
 }
 
@@ -295,7 +332,8 @@ export function renderSceneV2(ctx, {activity, definition, time = 0, reducedMotio
     halo.addColorStop(0, e.color + '10'); halo.addColorStop(1, e.color + '00');
     ctx.fillStyle = halo; ctx.fillRect(0, 0, 410, 502);
     ctx.translate(0, bob);
-    softBlob(ctx, floatingBody(paintedDefinition, e.color, t, activity.mode||'live'), t, reducedMotion);
+    const body=floatingBody(paintedDefinition,e.color,t,activity.mode||'live');
+    softBlob(ctx,litBody(body,paintedDefinition,motion,t,reducedMotion,activity.mode||'live'),t,reducedMotion);
     const faceY=237-attention*27;
     // Eyes travel farther than the body, making the corner glance readable.
     ctx.translate(reducedMotion?0:Math.max(-12,Math.min(12,motion.x*1.8)),reducedMotion?0:Math.max(-9,Math.min(9,motion.y*2)));

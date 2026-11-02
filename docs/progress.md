@@ -1,5 +1,18 @@
 # Progress — 2026-11-02
 
+## Depth-guided color and lighting
+
+Owner supplied a depth-map reference. Implemented a procedural rounded depth
+field (forward center = 1, receding boundary = 0), baked soft edge occlusion,
+and a smooth moving highlight/opposing shadow driven by the existing smoothed
+tilt/pointer input. This is a browser volume-lighting approximation, not camera
+depth capture. No new sensor, camera, network or runtime permissions added.
+The approved palettes, dark PLAY, diffusion, eye glyphs, gaze and V1 remain.
+Noise/depth masks stay static; dynamic light uses separate per-page scratch
+canvases, preserving the swipe fix. Reduced motion freezes the light pose.
+Twenty automated checks pass, including monotonic depth, directional lighting,
+clamping and reduced-motion invariance. Physical iPhone behavior remains untested.
+
 ## Layered eye glyphs, blue PLAY, gaze and pickup
 
 Follow-up correction: inverted the sleeping lid arcs (including the sleepy wink)

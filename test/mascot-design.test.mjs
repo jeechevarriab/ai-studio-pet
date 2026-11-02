@@ -1,9 +1,21 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {eyeDots,eyeMarks,homeColor,floatingBody} from '../simulator/renderer.js';
+import {eyeDots,eyeMarks,homeColor,floatingBody,surfaceDepth,depthLighting} from '../simulator/renderer.js';
 import {validateDefinitions,createPickupDetector} from '../simulator/engine.js';
 const character=JSON.parse(readFileSync(new URL('../character/expressions.json',import.meta.url),'utf8'));
+
+test('depth recedes from the forward surface and tilt moves light opposite its shadow',()=>{
+  assert.equal(surfaceDepth(205,249),1);
+  assert.equal(surfaceDepth(500,249),0);
+  assert(surfaceDepth(250,249)>surfaceDepth(350,249));
+  assert.equal(surfaceDepth(160,249),surfaceDepth(250,249));
+  const left=depthLighting({x:-6,y:-4}),right=depthLighting({x:6,y:4});
+  assert(left.lightX<right.lightX&&left.lightY<right.lightY);
+  assert(left.shadowX>right.shadowX&&left.shadowY>right.shadowY);
+  assert.deepEqual(depthLighting({x:6,y:4},5000,true),depthLighting({},0,true));
+  assert.deepEqual(depthLighting({x:600,y:400}),right);
+});
 
 test('layered eyes assign one separate dot or cross to every sample',()=>{
   for(const expression of character.touchEyes){
@@ -38,7 +50,7 @@ test('rapid alternating page renders keep independent tinted surfaces and a stab
       createImageData(w,h){return {data:new Uint8ClampedArray(w*h*4)};},
       putImageData(image){surface.pixels=image.data;},
       createRadialGradient(){const stops=[];return {addColorStop(...s){stops.push(s);},stops};},
-      fillRect(){surface.operations.push(this.fillStyle);},drawImage(image){surface.mask=image;},
+      fillRect(){surface.operations.push(this.fillStyle);},drawImage(image){surface.mask??=image;},
       beginPath(){},arc(){},fill(){},
     };}
     getContext(){return this.ctx;}
