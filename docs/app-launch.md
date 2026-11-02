@@ -5,8 +5,8 @@
 https://studio-mascot.jesse-ech.chatgpt.site
 
 Published with Sites as a separate allowlisted app copy. Site ID:
-appgprj_6ae8a58aa97481919638d5a4382c9127. Deployment version 3;
-source commit 29b9974524475b9695d3cee0d49041733fe3532f in its separate
+appgprj_6ae8a58aa97481919638d5a4382c9127. Deployment version 4;
+source commit dedaed03ad000fd52c60b648764389b505d4e07b in its separate
 Sites source repository. Working copy: sibling mascot-public-site folder.
 It exposes no desktop service or private repo. Public PLAY uses browser-side
 reads to the three fixed Open-Meteo/NOAA endpoints because the host's marine
