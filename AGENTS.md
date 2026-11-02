@@ -24,6 +24,14 @@ The approved compact first draft is preserved as mascot-v1. Current V2 direction
 
 Latest refinements: individual V2 eye dots are 40% smaller with denser sampling inside the enlarged footprint. Eye outlines are rounded/organic and have layered woven microtexture, shading and glints. WORK uses warm white with a diffused red mascot. Preserve those details and the untouched V1 source tag during future revisions.
 
+Latest owner corrections supersede the older eye treatment above: dots and Xs
+are separate glyphs in tinted depth bands, never crosses inside dots. Eye size
+is now 1.82 (another 30% over 1.4), with proportionate separation. Sleeping arcs
+are inverted. PLAY has a blue background, near-black diffused mascot and cyan
+eyes. Orientation drives a corner gaze; pickup after rest produces a short happy
+greeting, only after native sensor permission. Physical iPhone behavior remains
+unverified. The public standalone site is authorized; do not expose studio services.
+
 For every visual or motion task, read and apply C:/Users/Chapito/.codex/skills/adobe-art-direction/SKILL.md and relevant references, as required by the owner. Establish hierarchy and composition before polishing; inspect playback and representative frames. Follow the supplied minimal dot-matrix aesthetic. Do not use Meta mascot assets.
 
 Verify official Muse licensing, upstream commit, board configuration and ESP-IDF requirements before importing/building. Do not represent Canvas as directly deployable firmware. Keep simulator inputs synthetic until a separately approved authenticated read-only gateway is verified. No live surf API, voice, or flashing in the first milestone.
