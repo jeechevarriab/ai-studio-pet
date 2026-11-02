@@ -1,6 +1,6 @@
 import {MODES, initialState, validateDefinitions, validateRules, deriveActivity, swipeMode, stepTime, formatHour, ease, createPickupDetector} from './engine.js';
 import {renderScene} from './renderer.js';
-import {DESIGN_DEFAULTS,designDefinition} from './design.js';
+import {DESIGN_DEFAULTS,designDefinition,resolveModeDesign} from './design.js';
 import {connectDesignEditor} from './editor.js';
 import {connectStudio,paintStudio} from './studio.js';
 
@@ -21,8 +21,10 @@ function greetOnPickup(){greetingUntil=time+customDesign.greetingSeconds*1000;$(
 let holdTimer, holding = false, touchEye = -1, previousEye = -1, eyeChangedAt = 0;
 const defaultModeColors = {live: '#66f4d5', work: '#ff392c', surf: '#b4f483', sleep: '#b2a9ee'};
 let customDesign={...DESIGN_DEFAULTS};
+let sharedDesign={...DESIGN_DEFAULTS},modeDefinitions={};
 let studioReport=null,autoStudioWork=false;
-function setDesign(settings){customDesign={...settings};definition=designDefinition(original,customDesign);state.expression=customDesign.expression.startsWith('touch-')?'auto':customDesign.expression;touchEye=customDesign.expression.startsWith('touch-')?Number(customDesign.expression.slice(6)):-1;updateUI();}
+function restoreModeDesign(){customDesign=resolveModeDesign(sharedDesign,state.mode);definition=modeDefinitions[state.mode]||designDefinition(original,customDesign);state.expression=customDesign.expression.startsWith('touch-')?'auto':customDesign.expression;touchEye=customDesign.expression.startsWith('touch-')?Number(customDesign.expression.slice(6)):-1;previousEye=-1;}
+function setDesign(settings){sharedDesign=structuredClone(settings);modeDefinitions=Object.fromEntries(MODES.map(mode=>[mode,designDefinition(original,resolveModeDesign(settings,mode))]));restoreModeDesign();updateUI();}
 const modeColor = () => (definition.presentationV2?.modeColors || defaultModeColors)[state.mode];
 let surfData = null, surfPending = false;
 
@@ -172,7 +174,8 @@ function changeMode(mode,fromStudio=false) {
   if(!fromStudio)autoStudioWork=false;
   if (!MODES.includes(mode) || mode === state.mode) return;
   transition = reducedMotion.matches ? null : {from: {...activity}, started: performance.now(), direction: MODES.indexOf(mode) > MODES.indexOf(state.mode) ? 1 : -1};
-  activeNotice = null; touchEye = -1; previousEye = -1; state.mode = mode; updateUI();
+  activeNotice = null; touchEye = -1; previousEye = -1; state.mode = mode;if(mascotVersion==='v2')restoreModeDesign();updateUI();
+  document.dispatchEvent(new CustomEvent('mascot-mode-change',{detail:{mode}}));
   revealControls();
 }
 
@@ -191,7 +194,7 @@ function frame(timestamp) {
     motion.y += (motion.targetY - motion.y) * smoothing;
   }
   const eyeBlend = reducedMotion.matches ? 1 : Math.min(1, Math.max(0,(timestamp-eyeChangedAt)/140));
-  const render = current => renderScene(ctx, {activity: current, definition, time, reducedMotion: reducedMotion.matches, surf: state.surf, version: mascotVersion, motion, attention, touchEye, previousEye, eyeBlend, greeting});
+  const render = current => renderScene(ctx, {activity: current, definition:modeDefinitions[current.mode]||definition, time, reducedMotion: reducedMotion.matches, surf: state.surf, version: mascotVersion, motion, attention, touchEye:current.mode===state.mode?touchEye:-1, previousEye, eyeBlend, greeting});
   if (transition && !reducedMotion.matches) {
     const progress = Math.min(1, (timestamp - transition.started) / 330);
     const offset = ease(progress) * 410 * transition.direction;

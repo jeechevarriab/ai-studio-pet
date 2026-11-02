@@ -1,37 +1,41 @@
-import {DESIGN_GROUPS,DESIGN_DEFAULTS,validateDesign,editValue,undoValue,designForApply} from './design.js';
+import {DESIGN_GROUPS,DESIGN_DEFAULTS,validateDesign,editModeValue,undoModeValue,designForModeApply,modeSetting,settingHistoryKey,reconcileSavedDesign} from './design.js';
 export async function connectDesignEditor({preview,apply,mode}){
  const editing=location.pathname==='/customize';
+ let selectedMode='live';
+ const fieldValue=(design,key)=>modeSetting(design,selectedMode,key);
  let applied={...DESIGN_DEFAULTS},draft={...DESIGN_DEFAULTS},history={},revision=0,owner=false,loading=true,saving=false,signature='';
  const accept=settings=>{const next=JSON.stringify(settings);if(next!==signature){signature=next;apply(settings);}};
  const status=document.createElement('p');status.className='editor-status';status.setAttribute('role','status');
  const notify=message=>{status.textContent=message;};
  const button=(label,action,cls='')=>{const b=document.createElement('button');b.type='button';b.textContent=label;b.className=cls;b.addEventListener('click',action);return b;};
  const controls=new Map(),outputs=new Map(),undos=new Map(),applies=new Map();
- let accessNotice=null;
+ let accessNotice=null,modeHint=null;
  const refresh=()=>{
+  if(modeHint)modeHint.textContent=({live:'LIVE',work:'WORK',surf:'PLAY',sleep:'SLEEP'})[selectedMode]+' settings · Eyes, finish, shape and motion save separately for each mode.';
   for(const group of DESIGN_GROUPS)for(const f of group.fields){const input=controls.get(f.key);if(!input)continue;
-   if(f.type==='checkbox')input.checked=draft[f.key];else input.value=draft[f.key];
-   if(outputs.has(f.key))outputs.get(f.key).textContent=String(draft[f.key]);
-   undos.get(f.key).disabled=!history[f.key]?.length;
-   applies.get(f.key).disabled=loading||saving||!owner||draft[f.key]===applied[f.key];
-   applies.get(f.key).title=loading?'Loading your design':!owner?'Sign in with the owner account to save':saving?'Saving…':draft[f.key]===applied[f.key]?'Change this setting to activate Apply':'Save this setting across devices';
+   if(f.type==='checkbox')input.checked=fieldValue(draft,f.key);else input.value=fieldValue(draft,f.key);
+   if(outputs.has(f.key))outputs.get(f.key).textContent=String(fieldValue(draft,f.key));
+   undos.get(f.key).disabled=!history[settingHistoryKey(selectedMode,f.key)]?.length;
+   applies.get(f.key).disabled=loading||saving||!owner||fieldValue(draft,f.key)===fieldValue(applied,f.key);
+   applies.get(f.key).title=loading?'Loading your design':!owner?'Sign in with the owner account to save':saving?'Saving…':fieldValue(draft,f.key)===fieldValue(applied,f.key)?'Change this setting to activate Apply':'Save this setting across devices';
   }
   if(saveButton)saveButton.disabled=loading||saving||!owner;
  };
  let saveButton=null;
  async function saveDesign(key=null){
   if(saving||!owner||loading)return;
-  const submitted=designForApply(applied,draft,key),draftAtSubmit={...draft};
+  const submitted=designForModeApply(applied,draft,selectedMode,key),draftAtSubmit=structuredClone(draft);
+  const selection=key===null?null:{mode:selectedMode,key};
   saving=true;refresh();notify('Saving '+(key?'this setting':'your design')+'…');
   try{
    const response=await fetch('/api/design',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({settings:submitted,revision})});
    const body=await response.json();if(!response.ok)throw Error(body.error||'Could not save. Your preview is still here.');
    revision=body.revision;applied=validateDesign(body.settings);
    // Keep unrelated drafts and edits made while the save was in flight.
-   for(const field of Object.keys(applied))if((key===null||field===key)&&draft[field]===draftAtSubmit[field])draft[field]=applied[field];
+   draft=reconcileSavedDesign(applied,draftAtSubmit,draft,selection);
    try{localStorage.setItem('mascot-confirmed-design',JSON.stringify({settings:applied,revision}));}catch{}
    preview(draft);
-   const pending=Object.keys(applied).some(field=>draft[field]!==applied[field]);
+   const pending=JSON.stringify(draft)!==JSON.stringify(applied);
    notify(key?(pending?'Setting saved across devices. Other preview changes are still pending.':'Setting saved across devices.'):pending?'Submitted changes saved. Newer preview changes are still pending.':'Saved. Your mascot will use this design on every device.');
   }catch(error){notify(error.message);}finally{saving=false;refresh();}
  }
@@ -44,8 +48,10 @@ export async function connectDesignEditor({preview,apply,mode}){
   const close=document.createElement('a');close.href='/app';close.textContent='Open Mascot ↗';header.append(close);shell.append(header);
   accessNotice=document.createElement('div');accessNotice.className='editor-access';accessNotice.setAttribute('role','status');accessNotice.textContent='Connecting to your saved design…';header.append(accessNotice);
   const modes=document.createElement('div');modes.className='editor-mode-picker';
-  for(const [value,label]of [['live','LIVE'],['work','WORK'],['surf','PLAY'],['sleep','SLEEP']])modes.append(button(label,()=>{mode(value);modes.querySelectorAll('button').forEach(b=>b.classList.toggle('selected',b.textContent===label));}));
+  for(const [value,label]of [['live','LIVE'],['work','WORK'],['surf','PLAY'],['sleep','SLEEP']])modes.append(button(label,()=>{selectedMode=value;mode(value);preview(draft);refresh();modes.querySelectorAll('button').forEach(b=>b.classList.toggle('selected',b.textContent===label));}));
   modes.firstChild.classList.add('selected');shell.append(modes);
+  document.addEventListener('mascot-mode-change',event=>{if(!['live','work','surf','sleep'].includes(event.detail?.mode))return;selectedMode=event.detail.mode;const label=({live:'LIVE',work:'WORK',surf:'PLAY',sleep:'SLEEP'})[selectedMode];modes.querySelectorAll('button').forEach(b=>b.classList.toggle('selected',b.textContent===label));refresh();});
+  modeHint=document.createElement('p');modeHint.className='editor-description';shell.append(modeHint);
   const tabs=document.createElement('nav');tabs.className='editor-tabs';tabs.setAttribute('aria-label','Customization features');shell.append(tabs);
   for(const group of DESIGN_GROUPS){
    const section=document.createElement('section');section.className='editor-group';section.id='edit-'+group.id;section.hidden=group.id!=='colors';
@@ -54,16 +60,16 @@ export async function connectDesignEditor({preview,apply,mode}){
    for(const f of group.fields){
     const row=document.createElement('div');row.className='editor-setting';const label=document.createElement('label');label.htmlFor='setting-'+f.key;label.textContent=f.label;
     const input=document.createElement(f.type==='select'?'select':'input');input.id='setting-'+f.key;if(f.type!=='select')input.type=f.type;input.setAttribute('aria-label',f.label);
-    if(f.type==='select')for(const value of f.options){const o=document.createElement('option');o.value=value;o.textContent=f.key==='colorMode'?({cloud:'Gradient Cloud',boiling:'Boiling · Temperature Spectrum',paper:'Trace Paper',dither:'Dither'})[value]:value.startsWith('touch-')?['Orbit','Daydream','Glee','Lilt','Prism','Ripple','Intent','Sideglance','Soft wink','Starlit'][Number(value.slice(6))]:value==='auto'?'Follow activity':value[0].toUpperCase()+value.slice(1);input.append(o);}
+    if(f.type==='select')for(const value of f.options){const o=document.createElement('option');o.value=value;o.textContent=f.key==='colorMode'?({aurora:'Aurora',iridescence:'Iridescence',bends:'Color Bends',silk:'Silk'})[value]:value.startsWith('touch-')?['Orbit','Daydream','Glee','Lilt','Prism','Ripple','Intent','Sideglance','Soft wink','Starlit'][Number(value.slice(6))]:value==='auto'?'Follow activity':value[0].toUpperCase()+value.slice(1);input.append(o);}
     if(f.type==='range'){input.min=f.min;input.max=f.max;input.step=f.step;const output=document.createElement('output');output.htmlFor=input.id;outputs.set(f.key,output);label.append(output);}
     if(f.type==='text')input.maxLength=12;
-    const undo=button('Undo',()=>{draft=undoValue(draft,history,f.key);preview(draft);refresh();notify('Previous '+f.label.toLowerCase()+' restored. Apply to save.');},'setting-undo');undo.setAttribute('aria-label','Undo '+f.label);undos.set(f.key,undo);
+    const undo=button('Undo',()=>{draft=undoModeValue(draft,history,selectedMode,f.key);preview(draft);refresh();notify('Previous '+f.label.toLowerCase()+' restored. Apply to save.');},'setting-undo');undo.setAttribute('aria-label','Undo '+f.label);undos.set(f.key,undo);
     const applyOne=button('Apply',()=>void saveDesign(f.key),'setting-apply');applyOne.setAttribute('aria-label','Apply '+f.label);applies.set(f.key,applyOne);
     const actions=document.createElement('div');actions.className='setting-actions';actions.append(undo,applyOne);
     let dragging=false,recorded=false;
     input.addEventListener('pointerdown',()=>{dragging=true;recorded=false;});
     for(const event of ['pointerup','pointercancel','change','blur'])input.addEventListener(event,()=>{dragging=false;});
-    const changedInput=()=>{if(loading)return;try{const value=f.type==='range'?Number(input.value):f.type==='checkbox'?input.checked:input.value;const changed=value!==draft[f.key];if(!changed)return;draft=editValue(draft,dragging&&recorded?{}:history,f.key,value);if(dragging)recorded=true;preview(draft);refresh();notify('Previewing changes. Apply to save across devices.');}catch(error){notify(error.message);}};
+    const changedInput=()=>{if(loading)return;try{const value=f.type==='range'?Number(input.value):f.type==='checkbox'?input.checked:input.value;const changed=value!==fieldValue(draft,f.key);if(!changed)return;draft=editModeValue(draft,dragging&&recorded?{}:history,selectedMode,f.key,value);if(dragging)recorded=true;preview(draft);refresh();notify('Previewing changes. Apply to save across devices.');}catch(error){notify(error.message);}};
     input.addEventListener('input',changedInput);
     input.addEventListener('change',changedInput);
     controls.set(f.key,input);row.append(label,input,actions);section.append(row);

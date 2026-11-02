@@ -1,3 +1,4 @@
+import {drawColorFinish,finishName} from './color-finishes.js';
 const TAU = Math.PI * 2;
 function rounded(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); }
 function dot(ctx, x, y, radius) { ctx.beginPath(); ctx.arc(x, y, radius, 0, TAU); ctx.fill(); }
@@ -146,11 +147,11 @@ function materialMask(width,height,radius,feather) {
 // the outgoing page's cached texture or borrow its throttle window.
 export function floatingBody(definition, color, time, page = 'live') {
   const {width, height, radius, feather} = (definition.presentationV2 || defaultPresentationV2).task;
-  const finish=definition.presentationV2?.custom?.colorMode||'cloud';
+  const finish=finishName(definition.presentationV2?.custom?.colorMode||'aurora');
   const slot=[page,finish,definition.presentationV2?.custom?.[page+'Eye'],width,height,radius,feather,definition.body.shadowColor,definition.body.highlightColor,definition.body.darkSurface,definition.body.texture,definition.body.depth,definition.body.brightness].join(':');
   const cached=floatingCaches.get(slot);
-  if(cached?.color===color&&(finish!=='boiling'||Math.floor(time/100)===cached.tick))return cached.canvas;
-  if(cached&&performance.now()-cached.updatedAt<80)return cached.canvas;
+  if(cached?.color===color&&Math.floor(time/33)===cached.tick)return cached.canvas;
+  if(cached&&performance.now()-cached.updatedAt<25)return cached.canvas;
   const canvas = cached?.canvas || new OffscreenCanvas(410, 502);
   const c = canvas.getContext('2d');
   c.setTransform(1,0,0,1,0,0); c.globalAlpha=1; c.globalCompositeOperation='source-over'; c.filter='none'; c.clearRect(0,0,410,502);
@@ -160,17 +161,7 @@ export function floatingBody(definition, color, time, page = 'live') {
   gradient.addColorStop(.68,color);
   gradient.addColorStop(1,color+'58');
   c.fillStyle = gradient; c.fillRect(0, 0, 410, 502);
-  if(finish==='boiling'){
-    // Broad moving temperature pools: continuous motion, never fresh random noise.
-    c.fillStyle='#161146';c.fillRect(0,0,410,502);
-    for(let i=0;i<5;i++){
-      const x=205+Math.sin(time/4300+i*2.4)*135,y=245+Math.cos(time/5700+i*1.7)*115;
-      const pool=c.createRadialGradient(x,y,4,x,y,175);
-      const tint=['#3815bd','#a500bf','#ff1648','#ff690c','#ffcf42'][i];
-      pool.addColorStop(0,tint+'ee');pool.addColorStop(.45,tint+'9a');pool.addColorStop(1,tint+'00');
-      c.fillStyle=pool;c.fillRect(0,0,410,502);
-    }
-  }
+  drawColorFinish(c,{finish,color,time,dark:definition.body.darkSurface});
   c.globalCompositeOperation='destination-in';c.drawImage(materialMask(width,height,radius,feather),0,0);
   c.globalCompositeOperation = 'source-atop';
   c.globalAlpha=Math.min(1,(definition.body.depth??1)/2);c.drawImage(reliefMasks.get([width,height,radius,feather].join(':')),0,0);c.globalAlpha=1;
@@ -185,34 +176,7 @@ export function floatingBody(definition, color, time, page = 'live') {
     dot(c,x+(n-.5)*3,y+(noise(y,x)-.5)*3,.5+n*.65);
   }
   if(floatingCaches.size>=16&&!cached)floatingCaches.clear();
-  if(finish==='paper'){
-    c.globalAlpha=1;c.globalCompositeOperation='source-atop';
-    c.fillStyle='#e9dfcc99';c.fillRect(0,0,410,502);
-    // Milky overlapping sheets and fine fibers, without stripes or typography.
-    for(let i=0;i<3;i++){
-      const veil=c.createRadialGradient(110+i*82,200+i*40,5,160+i*52,245,190);
-      veil.addColorStop(0,i%2?'#e6c7a978':'#eff5e67a');veil.addColorStop(1,'#e9dfcc00');
-      c.fillStyle=veil;c.fillRect(0,0,410,502);
-    }
-    for(let y=60;y<450;y+=3)for(let x=15;x<400;x+=3){c.globalAlpha=.035+noise(x,y)*.06;c.fillStyle=noise(y,x)>.5?'#fffaf0':'#464e42';c.fillRect(x,y,1,1);}
-    c.globalAlpha=1;
-  }
-  if(finish==='dither'){
-    const image=c.getImageData(0,0,410,502),data=image.data;
-    const ink=definition.presentationV2?.custom?.[page+'Eye']||'#70cfff';
-    const inkRgb=[1,3,5].map(i=>parseInt(ink.slice(i,i+2),16));
-    for(let y=0;y<502;y+=2)for(let x=0;x<410;x+=2){
-      const i=(y*410+x)*4,threshold=([0,8,2,10,12,4,14,6,3,11,1,9,15,7,13,5][((y/2)%4)*4+(x/2)%4]/16-.5)*.7;
-      const rgb=[data[i],data[i+1],data[i+2]];
-      const luminous=definition.body.darkSurface&&threshold<(-.29+surfaceDepth(x,y,width,height)*.12+cloud(x/30,y/30)*.06);
-      for(let dy=0;dy<2&&y+dy<502;dy++)for(let dx=0;dx<2&&x+dx<410;dx++){
-        const j=((y+dy)*410+x+dx)*4;
-        for(let channel=0;channel<3;channel++)data[j+channel]=definition.body.darkSurface?(luminous?inkRgb[channel]*.58:rgb[channel]*.4):Math.max(0,Math.min(255,Math.round(rgb[channel]/255*3+threshold)*85));
-      }
-    }
-    c.putImageData(image,0,0);
-  }
-  floatingCaches.set(slot,{color,canvas,tick:Math.floor(time/100),updatedAt:performance.now()});
+  floatingCaches.set(slot,{color,canvas,tick:Math.floor(time/33),updatedAt:performance.now()});
   return canvas;
 }
 

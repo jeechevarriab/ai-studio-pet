@@ -4,7 +4,7 @@ const toggle=(key,label,value)=>({key,label,value,type:'checkbox'});
 const text=(key,label,value)=>({key,label,value,type:'text'});
 export const DESIGN_GROUPS=[
  {id:'colors',label:'Color',description:'A different world for every mode.',fields:[
-  {key:'colorMode',label:'Color finish',type:'select',value:'cloud',options:['cloud','boiling','paper','dither']},
+  {key:'colorMode',label:'Color finish',type:'select',value:'aurora',options:['aurora','iridescence','bends','silk']},
   range('saturation','Color saturation · %',120,50,180,5),
   color('liveColor','LIVE mascot','#66f4d5'),color('liveBackground','LIVE background','#050909'),
   color('workColor','WORK mascot','#ff392c'),color('workBackground','WORK background','#f2efed'),
@@ -34,9 +34,12 @@ export const DESIGN_GROUPS=[
  ]}
 ];
 export const DESIGN_FIELDS=DESIGN_GROUPS.flatMap(group=>group.fields);
-export const DESIGN_DEFAULTS=Object.fromEntries(DESIGN_FIELDS.map(f=>[f.key,f.value]));
+export const DESIGN_DEFAULTS={...Object.fromEntries(DESIGN_FIELDS.map(f=>[f.key,f.value])),modeOverrides:{}};
+export const DESIGN_MODES=['live','work','surf','sleep'];
+export const scopedSetting=key=>key!=='studioAuto'&&!/^(live|work|surf|sleep)(Color|Background|Eye)$/.test(key);
 export function validateDesign(input){
  if(!input||typeof input!=='object'||Array.isArray(input)||Object.keys(input).some(k=>!Object.hasOwn(DESIGN_DEFAULTS,k)))throw Error('Unknown design setting');
+ input={...input};if(input.colorMode)input.colorMode=({cloud:'aurora',boiling:'bends',paper:'silk',dither:'iridescence'})[input.colorMode]||input.colorMode;
  const result={...DESIGN_DEFAULTS};
  for(const f of DESIGN_FIELDS){if(!Object.hasOwn(input,f.key))continue;const v=input[f.key];
   if(f.type==='range'&&(!Number.isFinite(v)||v<f.min||v>f.max))throw Error('Invalid '+f.label);
@@ -45,7 +48,43 @@ export function validateDesign(input){
   if(f.type==='text'&&(typeof v!=='string'||v.length<1||v.length>12||!/^[\x21-\x7e]+$/.test(v)))throw Error('Use 1–12 printable characters');
   if(f.type==='select'&&!f.options.includes(v))throw Error('Invalid '+f.label);
   result[f.key]=v;
- }return result;
+ }
+ result.modeOverrides={};
+ if(input.modeOverrides!==undefined){
+  const overrides=input.modeOverrides;
+  if(!overrides||typeof overrides!=='object'||Array.isArray(overrides)||Object.keys(overrides).some(mode=>!DESIGN_MODES.includes(mode)))throw Error('Invalid mode settings');
+  for(const [mode,fields]of Object.entries(overrides)){
+   if(!fields||typeof fields!=='object'||Array.isArray(fields)||Object.keys(fields).some(key=>key==='modeOverrides'||!DESIGN_FIELDS.some(f=>f.key===key)||!scopedSetting(key)))throw Error('Invalid mode setting');
+   const checked=validateDesign(fields);result.modeOverrides[mode]=Object.fromEntries(Object.keys(fields).map(key=>[key,checked[key]]));
+  }
+ }
+ return result;
+}
+export const modeSetting=(design,mode,key)=>scopedSetting(key)?design.modeOverrides?.[mode]?.[key]??design[key]:design[key];
+export const settingHistoryKey=(mode,key)=>(scopedSetting(key)?mode:'global')+'/'+key;
+export function resolveModeDesign(input,mode){const d=validateDesign(input);if(!DESIGN_MODES.includes(mode))throw Error('Invalid mode');return {...d,...d.modeOverrides[mode],modeOverrides:{}};}
+function writeModeSetting(input,mode,key,value){
+ if(!DESIGN_MODES.includes(mode)||!DESIGN_FIELDS.some(f=>f.key===key))throw Error('Invalid mode setting');
+ return validateDesign(scopedSetting(key)?{...input,modeOverrides:{...input.modeOverrides,[mode]:{...input.modeOverrides?.[mode],[key]:value}}}:{...input,[key]:value});
+}
+export function editModeValue(draft,history,mode,key,value){
+ const next=writeModeSetting(draft,mode,key,value),old=modeSetting(draft,mode,key),h=settingHistoryKey(mode,key);
+ if(modeSetting(next,mode,key)!==old){(history[h]||=[]).push(old);if(history[h].length>50)history[h].shift();}return next;
+}
+export function undoModeValue(draft,history,mode,key){const stack=history[settingHistoryKey(mode,key)];return stack?.length?writeModeSetting(draft,mode,key,stack.pop()):draft;}
+export function designForModeApply(applied,draft,mode,key=null){return key===null?validateDesign(draft):writeModeSetting(applied,mode,key,modeSetting(draft,mode,key));}
+export function reconcileSavedDesign(saved,before,after,selection=null){
+ const result=structuredClone(after);
+ for(const f of DESIGN_FIELDS)if((!selection||!scopedSetting(f.key)&&f.key===selection.key)&&before[f.key]===after[f.key])result[f.key]=saved[f.key];
+ result.modeOverrides??={};
+ for(const mode of DESIGN_MODES){
+  const fields={...result.modeOverrides[mode]};
+  for(const f of DESIGN_FIELDS)if(scopedSetting(f.key)&&(!selection||mode===selection.mode&&f.key===selection.key)&&before.modeOverrides?.[mode]?.[f.key]===after.modeOverrides?.[mode]?.[f.key]){
+   const value=saved.modeOverrides?.[mode]?.[f.key];if(value===undefined)delete fields[f.key];else fields[f.key]=value;
+  }
+  if(Object.keys(fields).length)result.modeOverrides[mode]=fields;else delete result.modeOverrides[mode];
+ }
+ return validateDesign(result);
 }
 export function designDefinition(base,input){
  const d=validateDesign(input),result=structuredClone(base),p=result.presentationV2;

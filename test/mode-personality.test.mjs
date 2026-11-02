@@ -19,9 +19,11 @@ test('eye silhouettes are distinct and sleepy stretches freeze with reduced moti
 });
 test('new finishes default safely for existing saved designs and save independently',()=>{
  const old={...DESIGN_DEFAULTS};delete old.colorMode;delete old.saturation;
- const upgraded=validateDesign(old);assert.equal(upgraded.saturation,120);assert.equal(upgraded.colorMode,'cloud');
- for(const colorMode of ['cloud','boiling','paper','dither'])assert.equal(validateDesign({...upgraded,colorMode}).colorMode,colorMode);
+ const upgraded=validateDesign(old);assert.equal(upgraded.saturation,120);assert.equal(upgraded.colorMode,'aurora');
+ for(const colorMode of ['aurora','iridescence','bends','silk'])assert.equal(validateDesign({...upgraded,colorMode}).colorMode,colorMode);
  assert.throws(()=>validateDesign({...upgraded,colorMode:'unsafe'}));
- const saved=designForApply(upgraded,{...upgraded,colorMode:'dither',liveColor:'#123456'},'colorMode');
- assert.equal(saved.colorMode,'dither');assert.equal(saved.liveColor,upgraded.liveColor);
+ const saved=designForApply(upgraded,{...upgraded,colorMode:'silk',liveColor:'#123456'},'colorMode');
+ assert.equal(saved.colorMode,'silk');assert.equal(saved.liveColor,upgraded.liveColor);
+ assert.equal(validateDesign({...upgraded,colorMode:'boiling'}).colorMode,'bends');
+ assert.equal(validateDesign({...upgraded,colorMode:'paper'}).colorMode,'silk');
 });

@@ -17,3 +17,9 @@ Observed: the simulator runs on the installed Node runtime without additional pa
 Limits: these are local simulator results only. They do not validate firmware, hardware, upstream Muse services or enforced agent isolation. No shared-knowledge record was published and no existing studio research was imported.
 
 For each future entry record the problem, applicability, source URL, exact source/tool version, tested method, observed result, limitations and verification date. Keep recommendations separate from tested facts. Include studio knowledge record ID/version/hash when an explicitly shared record is used. Do not store credentials, private conversations or unrelated client material here.
+
+## Per-mode persistence and React Bits shaders — 2026-11-02
+
+Problem: flat editor settings and clearing the touch expression on navigation lost the chosen eye appearance. Method: validated per-mode overrides with legacy global fallbacks, mode-specific histories, targeted Apply and reconciliation of pending/newer changes. Evidence: test/per-mode-design.test.mjs and deployed owner-browser save/switch/reload/restore sequence; 31 private tests and hosted storage/auth tests passed. Never infer anonymous write permission from a preview.
+
+Source for shader integration: https://github.com/DavidHDev/react-bits at 4dc7b5b7772e1217c8fb8d2a7aa074302180e5b4, selected through the supplied local React Bits README. Application adapter extracts the four shaders and uses one WebGL2 context, no React or Three runtime. Copy into per-page surfaces before rendering another page to retain swipe isolation. Preserve the MIT + Commons Clause notice. Browser visually checked Aurora, Iridescence, Color Bends and Silk; no shader fallback messages observed. Limits: no physical iPhone performance, hardware or firmware parity claim.
