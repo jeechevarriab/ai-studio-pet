@@ -146,9 +146,10 @@ function materialMask(width,height,radius,feather) {
 // the outgoing page's cached texture or borrow its throttle window.
 export function floatingBody(definition, color, time, page = 'live') {
   const {width, height, radius, feather} = (definition.presentationV2 || defaultPresentationV2).task;
-  const slot=[page,width,height,radius,feather,definition.body.shadowColor,definition.body.highlightColor,definition.body.darkSurface,definition.body.texture,definition.body.depth,definition.body.brightness].join(':');
+  const finish=definition.presentationV2?.custom?.colorMode||'cloud';
+  const slot=[page,finish,definition.presentationV2?.custom?.[page+'Eye'],width,height,radius,feather,definition.body.shadowColor,definition.body.highlightColor,definition.body.darkSurface,definition.body.texture,definition.body.depth,definition.body.brightness].join(':');
   const cached=floatingCaches.get(slot);
-  if(cached?.color===color)return cached.canvas;
+  if(cached?.color===color&&(finish!=='boiling'||Math.floor(time/100)===cached.tick))return cached.canvas;
   if(cached&&performance.now()-cached.updatedAt<80)return cached.canvas;
   const canvas = cached?.canvas || new OffscreenCanvas(410, 502);
   const c = canvas.getContext('2d');
@@ -159,6 +160,17 @@ export function floatingBody(definition, color, time, page = 'live') {
   gradient.addColorStop(.68,color);
   gradient.addColorStop(1,color+'58');
   c.fillStyle = gradient; c.fillRect(0, 0, 410, 502);
+  if(finish==='boiling'){
+    // Broad moving temperature pools: continuous motion, never fresh random noise.
+    c.fillStyle='#161146';c.fillRect(0,0,410,502);
+    for(let i=0;i<5;i++){
+      const x=205+Math.sin(time/4300+i*2.4)*135,y=245+Math.cos(time/5700+i*1.7)*115;
+      const pool=c.createRadialGradient(x,y,4,x,y,175);
+      const tint=['#3815bd','#a500bf','#ff1648','#ff690c','#ffcf42'][i];
+      pool.addColorStop(0,tint+'ee');pool.addColorStop(.45,tint+'9a');pool.addColorStop(1,tint+'00');
+      c.fillStyle=pool;c.fillRect(0,0,410,502);
+    }
+  }
   c.globalCompositeOperation='destination-in';c.drawImage(materialMask(width,height,radius,feather),0,0);
   c.globalCompositeOperation = 'source-atop';
   c.globalAlpha=Math.min(1,(definition.body.depth??1)/2);c.drawImage(reliefMasks.get([width,height,radius,feather].join(':')),0,0);c.globalAlpha=1;
@@ -173,7 +185,34 @@ export function floatingBody(definition, color, time, page = 'live') {
     dot(c,x+(n-.5)*3,y+(noise(y,x)-.5)*3,.5+n*.65);
   }
   if(floatingCaches.size>=16&&!cached)floatingCaches.clear();
-  floatingCaches.set(slot,{color,canvas,updatedAt:performance.now()});
+  if(finish==='paper'){
+    c.globalAlpha=1;c.globalCompositeOperation='source-atop';
+    c.fillStyle='#e9dfcc99';c.fillRect(0,0,410,502);
+    // Milky overlapping sheets and fine fibers, without stripes or typography.
+    for(let i=0;i<3;i++){
+      const veil=c.createRadialGradient(110+i*82,200+i*40,5,160+i*52,245,190);
+      veil.addColorStop(0,i%2?'#e6c7a978':'#eff5e67a');veil.addColorStop(1,'#e9dfcc00');
+      c.fillStyle=veil;c.fillRect(0,0,410,502);
+    }
+    for(let y=60;y<450;y+=3)for(let x=15;x<400;x+=3){c.globalAlpha=.035+noise(x,y)*.06;c.fillStyle=noise(y,x)>.5?'#fffaf0':'#464e42';c.fillRect(x,y,1,1);}
+    c.globalAlpha=1;
+  }
+  if(finish==='dither'){
+    const image=c.getImageData(0,0,410,502),data=image.data;
+    const ink=definition.presentationV2?.custom?.[page+'Eye']||'#70cfff';
+    const inkRgb=[1,3,5].map(i=>parseInt(ink.slice(i,i+2),16));
+    for(let y=0;y<502;y+=2)for(let x=0;x<410;x+=2){
+      const i=(y*410+x)*4,threshold=([0,8,2,10,12,4,14,6,3,11,1,9,15,7,13,5][((y/2)%4)*4+(x/2)%4]/16-.5)*.7;
+      const rgb=[data[i],data[i+1],data[i+2]];
+      const luminous=definition.body.darkSurface&&threshold<(-.29+surfaceDepth(x,y,width,height)*.12+cloud(x/30,y/30)*.06);
+      for(let dy=0;dy<2&&y+dy<502;dy++)for(let dx=0;dx<2&&x+dx<410;dx++){
+        const j=((y+dy)*410+x+dx)*4;
+        for(let channel=0;channel<3;channel++)data[j+channel]=definition.body.darkSurface?(luminous?inkRgb[channel]*.58:rgb[channel]*.4):Math.max(0,Math.min(255,Math.round(rgb[channel]/255*3+threshold)*85));
+      }
+    }
+    c.putImageData(image,0,0);
+  }
+  floatingCaches.set(slot,{color,canvas,tick:Math.floor(time/100),updatedAt:performance.now()});
   return canvas;
 }
 
@@ -235,6 +274,16 @@ function asciiEyes(ctx, points, radius, eyes, time, still) {
   ctx.restore();
 }
 
+export function modeEyeShape(label,x,y,side,time=0,still=false){
+  const oval=x*x/.94+y*y<1;
+  if(label==='Happy')return Math.abs(y-(-.28+.7*x*x+(still?0:Math.sin(time/1700)*.06)))<.2&&x*x+y*y<1;
+  if(label==='Focused')return oval&&y>-.08+.25*x*(side?1:-1)+.16*x*x&&y<.6;
+  if(label==='Sleeping'){
+    const stretch=still?0:Math.max(0,Math.sin(time/5300))**10*.46;
+    return Math.abs(y-(.32-.32*x*x))<.14+stretch&&Math.abs(x)<.9;
+  }
+  return oval;
+}
 function largeFace(ctx, definition, expression, time, scale, offsetY, reducedMotion) {
   const eyes = definition.eyes;
   const size=definition.presentationV2?.eyeSizeMultiplier||1.4;
@@ -248,10 +297,7 @@ function largeFace(ctx, definition, expression, time, scale, offsetY, reducedMot
   for (let side = 0; side < 2; side++) {
     for (let ri = 0; ri <= 6*density; ri++) for (let ci = 0; ci <= 4*density; ci++) {
       const row=ri/density,col=ci/density,x=(col-2)/2,y=(row-3)/3;
-      let on=x*x/.94+y*y<1;
-      if(expression.label==='Happy')on=Math.abs(y-(-.28+.7*x*x))<.2&&x*x+y*y<1;
-      if(expression.label==='Focused')on=on&&y>-.34+.15*x*(side?1:-1)+.2*x*x;
-      if(expression.label==='Sleeping')on=Math.abs(y-(.32-.32*x*x))<.16&&Math.abs(x)<.9;
+      const on=modeEyeShape(expression.label,x,y,side,time,reducedMotion);
       if (blink ? row === 3&&Math.abs(x)<.9 : on) points.push([205+(side?1:-1)*separation/2+(col-2)*spacing,offsetY+(row-3)*spacing]);
     }
   }
@@ -331,6 +377,7 @@ export function renderSceneV2(ctx, {activity, definition, time = 0, reducedMotio
   const eyeColor=custom[(activity.mode||'live')+'Eye'];
   const paintedDefinition=workTheme?{...definition,body:{...definition.body,shadowColor:'#3b0605',highlightColor:'#fff4ef'},eyes:{...definition.eyes,color:eyeColor||'#361423',layers:['#9b4868','#62253e',eyeColor||'#361423']}}:playTheme?{...definition,body:{...definition.body,shadowColor:'#000306',highlightColor:'#071117',darkSurface:true},eyes:{...definition.eyes,color:eyeColor||'#dcfcff',layers:['#3988bf','#7bdcf6',eyeColor||'#dcfcff'],luminous:true}}:{...definition,eyes:{...definition.eyes,color:eyeColor||definition.eyes.color}};
   if(playTheme)e.color=custom.surfColor||'#01070b';
+  ctx.save();ctx.filter=`saturate(${(custom.saturation??120)/100})`;
   ctx.fillStyle = custom[(activity.mode||'live')+'Background']||(workTheme?'#f2efed':playTheme?'#078fe3':'#050909'); ctx.fillRect(0, 0, 410, 502);
   ctx.save();
     // A single floating treatment across LIVE, WORK, SURF and SLEEP.
@@ -348,6 +395,7 @@ export function renderSceneV2(ctx, {activity, definition, time = 0, reducedMotio
     const body=floatingBody(paintedDefinition,e.color,t,activity.mode||'live');
     softBlob(ctx,litBody(body,paintedDefinition,motion,t,reducedMotion,activity.mode||'live'),t,reducedMotion,custom.liquid??1);
     const faceY=237-attention*27;
+    ctx.filter='none';
     // Eyes travel farther than the body, making the corner glance readable.
     ctx.translate(reducedMotion?0:Math.max(-12,Math.min(12,motion.x*1.8))*(custom.gaze??1),reducedMotion?0:Math.max(-9,Math.min(9,motion.y*2))*(custom.gaze??1));
     if(greeting>.01) {
@@ -357,7 +405,15 @@ export function renderSceneV2(ctx, {activity, definition, time = 0, reducedMotio
       if(previousEye>=0&&eyeBlend<1) touchFace(ctx,paintedDefinition,previousEye,presentation.task.eyeScale,faceY,1-eyeBlend,t,reducedMotion);
       if(previousEye<0&&eyeBlend<1) {ctx.save();ctx.globalAlpha=1-eyeBlend;largeFace(ctx,paintedDefinition,e,t,presentation.task.eyeScale,faceY,reducedMotion);ctx.restore();}
       touchFace(ctx,paintedDefinition,touchEye,presentation.task.eyeScale,faceY,eyeBlend,t,reducedMotion);
+    } else if((activity.mode||'live')==='live'&&activity.expression==='idle'&&(!custom.expression||custom.expression==='auto')&&!reducedMotion){
+      const cycle=[-1,0,1,3,5,9],phase=t/5200,index=Math.floor(phase)%cycle.length;
+      const blend=Math.max(0,((phase%1)-.8)/.2),smooth=blend*blend*(3-2*blend);
+      for(const [eye,alpha]of [[cycle[index],1-smooth],[cycle[(index+1)%cycle.length],smooth]])if(alpha>0){
+        if(eye<0){ctx.save();ctx.globalAlpha=alpha;largeFace(ctx,paintedDefinition,e,t,presentation.task.eyeScale,faceY,reducedMotion);ctx.restore();}
+        else touchFace(ctx,paintedDefinition,eye,presentation.task.eyeScale,faceY,alpha,t,reducedMotion);
+      }
     } else largeFace(ctx, paintedDefinition, e, t, presentation.task.eyeScale, faceY, reducedMotion);
+  ctx.restore();
   ctx.restore();
 }
 

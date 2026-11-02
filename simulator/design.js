@@ -4,6 +4,8 @@ const toggle=(key,label,value)=>({key,label,value,type:'checkbox'});
 const text=(key,label,value)=>({key,label,value,type:'text'});
 export const DESIGN_GROUPS=[
  {id:'colors',label:'Color',description:'A different world for every mode.',fields:[
+  {key:'colorMode',label:'Color finish',type:'select',value:'cloud',options:['cloud','boiling','paper','dither']},
+  range('saturation','Color saturation · %',120,50,180,5),
   color('liveColor','LIVE mascot','#66f4d5'),color('liveBackground','LIVE background','#050909'),
   color('workColor','WORK mascot','#ff392c'),color('workBackground','WORK background','#f2efed'),
   color('surfColor','PLAY mascot','#01070b'),color('surfBackground','PLAY background','#078fe3'),
@@ -41,7 +43,7 @@ export function validateDesign(input){
   if(f.type==='checkbox'&&typeof v!=='boolean')throw Error('Invalid '+f.label);
   if(f.type==='color'&&(typeof v!=='string'||!/^#[0-9a-f]{6}$/i.test(v)))throw Error('Invalid '+f.label);
   if(f.type==='text'&&(typeof v!=='string'||v.length<1||v.length>12||!/^[\x21-\x7e]+$/.test(v)))throw Error('Use 1–12 printable characters');
-  if(f.type==='select'&&!f.options.includes(v))throw Error('Invalid expression');
+  if(f.type==='select'&&!f.options.includes(v))throw Error('Invalid '+f.label);
   result[f.key]=v;
  }return result;
 }

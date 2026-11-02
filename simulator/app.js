@@ -135,7 +135,7 @@ async function enableTilt() {
 }
 
 function updateUI() {
-  activity = {...deriveActivity(state, rules), mode: state.mode};
+  activity = {...deriveActivity(state, rules, mascotVersion==='v2'), mode: state.mode};
   if(mascotVersion==='v2'){
     const bg=customDesign[state.mode+'Background'],rgb=[1,3,5].map(i=>parseInt(bg.slice(i,i+2),16));
     const light=rgb[0]*.2126+rgb[1]*.7152+rgb[2]*.0722>145;

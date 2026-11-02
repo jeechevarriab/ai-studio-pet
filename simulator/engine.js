@@ -39,7 +39,7 @@ export function validateRules(rules) {
   return rules;
 }
 
-export function deriveActivity(state, config = defaultRules) {
+export function deriveActivity(state, config = defaultRules, modePersonality = true) {
   const options = {
     sleep: {match: state.hour < config.sleepBeforeHour || state.hour >= config.sleepFromHour, scene: 'sleep', expression: 'sleeping', caption: 'A little time to recharge.', label: 'Resting'},
     failure: {match: state.event === 'failure', scene: 'work', expression: 'focused', caption: 'A small setback. Working on it.', label: 'Trying again'},
@@ -53,6 +53,8 @@ export function deriveActivity(state, config = defaultRules) {
   if (state.mode === 'work') activity = options.failure.match ? options.failure : {...options.working, caption: state.agentStatus === 'working' ? options.working.caption : 'Ready when your studio is.', label: state.agentStatus === 'working' ? 'In the flow' : 'Standing by', expression: state.agentStatus === 'working' ? 'focused' : 'idle'};
   if (state.mode === 'surf') activity = {...options.surf, expression: state.surf >= config.surfThreshold ? 'happy' : 'idle', caption: state.surf >= config.surfThreshold ? options.surf.caption : 'Waiting for the next little wave.'};
   if (state.mode === 'sleep') activity = options.sleep;
+  if(modePersonality&&state.mode==='work')activity={...activity,expression:'focused'};
+  if(modePersonality&&state.mode==='surf')activity={...activity,expression:'happy'};
   return {...activity, expression: state.expression === 'auto' ? activity.expression : state.expression};
 }
 
