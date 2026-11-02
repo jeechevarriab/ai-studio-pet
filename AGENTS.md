@@ -32,6 +32,11 @@ eyes. Orientation drives a corner gaze; pickup after rest produces a short happy
 greeting, only after native sensor permission. Physical iPhone behavior remains
 unverified. The public standalone site is authorized; do not expose studio services.
 
+Depth-map-inspired lighting uses a procedural rounded depth field, static soft
+edge occlusion and a continuously shifting highlight/opposing shadow from the
+existing tilt/pointer input. Keep the texture stable and page caches independent;
+do not brighten PLAY back to grey or introduce a camera dependency.
+
 For every visual or motion task, read and apply C:/Users/Chapito/.codex/skills/adobe-art-direction/SKILL.md and relevant references, as required by the owner. Establish hierarchy and composition before polishing; inspect playback and representative frames. Follow the supplied minimal dot-matrix aesthetic. Do not use Meta mascot assets.
 
 Verify official Muse licensing, upstream commit, board configuration and ESP-IDF requirements before importing/building. Do not represent Canvas as directly deployable firmware. Keep simulator inputs synthetic until a separately approved authenticated read-only gateway is verified. No live surf API, voice, or flashing in the first milestone.
