@@ -1,9 +1,22 @@
-# Future companion gateway — design only
+# Read-only STUDIO status relay
 
-Phase 1 uses synthetic controls only. There is no gateway process, listener, authentication token or connection to the AI STUDIO runtime.
+The owner subsequently authorized live STUDIO status integration. status-relay.mjs
+is a separate on-demand Windows process, not a hub service or agent. It reads the
+five native activity records and the fixed dashboard task status files, projects
+only allowlisted status metadata, and posts outward to the mascot HTTPS endpoint.
+There is no new listener, tunnel, hub configuration or conversation modification.
 
-Existing hub inspection found /api/health for a minimal health report and /api/state for a broad dashboard state that includes task/conversation context. Do not send /api/state wholesale to this project or an ESP32. The existing native knowledge helper rejects unregistered chats; do not borrow another agent identity or credential.
+The authenticated /api/state interface was not bypassed or copied. The relay uses
+the public local health endpoint and filesystem status projections; no hub key,
+pairing credential, native publisher identity or conversation content is exported.
 
-A separately approved implementation should expose an authenticated, read-only, size-bounded allowlist. Proposed response: schemaVersion, observedAt and exactly the five existing role IDs with a status enum (unknown, idle, working, attention). Exclude task text, file paths, user messages, documents, executable commands and tokens. Reject unknown fields/roles/status values, stale/replayed data and oversized responses. Define expiration, revocation, transport and permitted network scope before implementation. Treat upstream strings as data, never commands.
+The hosted receiver requires a dedicated status-only bearer key, validates exactly
+five roles and enum states/phases, bounds requests, rejects stale/replayed reports
+and expires the connection after 30 seconds. No task text, file paths, messages,
+documents, tools, executable commands or tokens appear in the public report.
+The key is provisioned in ignored .local/relay.json and Sites runtime secrets.
 
-No backend role registration, sixth dashboard card, Manager delegation, studio event publication or shared knowledge permission change is included in Phase 1.
+The relay is running for this session. To start it again after Windows restarts,
+use Start-Relay.ps1. Do not start duplicates. Automatic startup is not installed.
+No sixth role/card, delegation, shared knowledge or execution permission was added.
+See ../docs/customization-and-studio.md for the contract and verification limits.

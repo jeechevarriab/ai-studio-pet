@@ -1,5 +1,26 @@
 # Progress — 2026-11-02
 
+## Watch-style companion customization and live STUDIO status
+
+Owner requested an Apple Watch companion-style editor, Undo per feature and Apply
+with owner-only cross-device saving, then authorized live STUDIO activity. Added
+/customize with 48 controls in five categories, live preview, independent Undo,
+discard and Apply & Save. Sites identity bootstraps the configured owner to a
+stable site-scoped ID; cloud R2 storage uses revision/etag checks and same-origin
+write validation. Owner sign-in and a default-design save were verified live.
+Anonymous writes, invalid/oversized settings, identity header spoofing and stale
+updates were checked. No credentials or owner identity are sent to app clients.
+
+A separate Windows relay sends only five fixed roles, status/phase enums and
+timing metadata from native/dashboard status records. The public app reacts to
+working/attention states and displays phase, elapsed time and indeterminate
+progress on WORK. There are no actual source percentages, so none are invented.
+The source hub API required pairing; its auth was not altered or borrowed. The
+relay has its own status-only key and no inbound port. It is running, with a
+manual restart helper; Windows startup settings were not changed. 24 local tests
+plus hosted API/auth/persistence/relay checks passed. Main features and V1 remain.
+See customization-and-studio.md for exact source/projection and limitations.
+
 ## ASCII eye rendering
 
 V2 now renders actual monospace characters (.:+ x*o O0#@) instead of vector

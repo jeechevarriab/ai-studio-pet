@@ -1,5 +1,8 @@
 import {MODES, initialState, validateDefinitions, validateRules, deriveActivity, swipeMode, stepTime, formatHour, ease, createPickupDetector} from './engine.js';
 import {renderScene} from './renderer.js';
+import {DESIGN_DEFAULTS,designDefinition} from './design.js';
+import {connectDesignEditor} from './editor.js';
+import {connectStudio,paintStudio} from './studio.js';
 
 const $ = id => document.getElementById(id);
 const canvas = $('pet-canvas');
@@ -13,15 +16,19 @@ let controlsTimer, suppressTap = false, tiltAttempted = false, tiltOrigin = null
 let attention = 0, attentionTarget = 0, activeNotice = null;
 let greetingUntil=0,greeting=0,motionSeenAt=-Infinity;
 const pickupMotion=createPickupDetector(),pickupTilt=createPickupDetector();
-const pickupEligible=()=>!document.hidden&&state.mode==='live'&&state.agentStatus==='idle'&&state.event==='none'&&!state.paused&&!holding&&!$('device').classList.contains('controls-visible');
-function greetOnPickup(){greetingUntil=time+2800;$('screen-status').textContent='Happy to see you.';}
+const pickupEligible=()=>customDesign.sensors&&customDesign.pickup&&!document.hidden&&state.mode==='live'&&state.agentStatus==='idle'&&state.event==='none'&&!state.paused&&!holding&&!$('device').classList.contains('controls-visible');
+function greetOnPickup(){greetingUntil=time+customDesign.greetingSeconds*1000;$('screen-status').textContent='Happy to see you.';}
 let holdTimer, holding = false, touchEye = -1, previousEye = -1, eyeChangedAt = 0;
 const defaultModeColors = {live: '#66f4d5', work: '#ff392c', surf: '#b4f483', sleep: '#b2a9ee'};
+let customDesign={...DESIGN_DEFAULTS};
+let studioReport=null,autoStudioWork=false;
+function setDesign(settings){customDesign={...settings};definition=designDefinition(original,customDesign);state.expression=customDesign.expression.startsWith('touch-')?'auto':customDesign.expression;touchEye=customDesign.expression.startsWith('touch-')?Number(customDesign.expression.slice(6)):-1;updateUI();}
 const modeColor = () => (definition.presentationV2?.modeColors || defaultModeColors)[state.mode];
 let surfData = null, surfPending = false;
 
 function syncPlayPanel() {
   $('play-panel').hidden = mascotVersion !== 'v2' || state.mode !== 'surf' || !$('device').classList.contains('controls-visible') || !!activeNotice;
+  $('studio-panel').hidden=mascotVersion!=='v2'||state.mode!=='work'||!$('device').classList.contains('controls-visible')||!!activeNotice;
 }
 
 async function loadSurf() {
@@ -92,22 +99,23 @@ function revealControls(visible = true) {
     $('message-title').textContent = activeNotice.title;
     $('message-body').textContent = activeNotice.body;
   }
-  if (activeNotice || (visible && state.mode === 'surf')) return;
+  if (activeNotice || (visible && (state.mode === 'surf'||state.mode==='work'&&studioReport?.online&&studioReport.agents.some(a=>a.status==='working'||a.status==='attention')))) return;
   if (visible) controlsTimer = setTimeout(() => {
     if ($('device').contains(document.activeElement) && document.activeElement.matches('button')) return revealControls();
     $('device').classList.remove('controls-visible');
     attentionTarget = 0;
-  }, 4500);
+  }, customDesign.menuSeconds*1000);
 }
 
 async function enableTilt() {
-  if (tiltAttempted || mascotVersion !== 'v2' || reducedMotion.matches) return;
+  if (tiltAttempted || mascotVersion !== 'v2' || reducedMotion.matches || !customDesign.sensors) return;
   tiltAttempted = true;
   try {
     // Start both permission requests while the real touch activation is live.
     const permission=api=>!api?Promise.resolve('unavailable'):typeof api.requestPermission==='function'?api.requestPermission():Promise.resolve('granted');
     const [orientation,movement]=await Promise.allSettled([permission(window.DeviceOrientationEvent),permission(window.DeviceMotionEvent)]);
     if(orientation.status==='fulfilled'&&orientation.value==='granted')window.addEventListener('deviceorientation', event => {
+      if(!customDesign.sensors)return;
       if (!Number.isFinite(event.gamma) || !Number.isFinite(event.beta)) return;
       if (!tiltOrigin) tiltOrigin = {gamma: event.gamma, beta: event.beta};
       const now=performance.now(),r=Math.PI/180,b=event.beta*r,g=event.gamma*r;
@@ -127,9 +135,17 @@ async function enableTilt() {
 
 function updateUI() {
   activity = {...deriveActivity(state, rules), mode: state.mode};
+  if(mascotVersion==='v2'){
+    const bg=customDesign[state.mode+'Background'],rgb=[1,3,5].map(i=>parseInt(bg.slice(i,i+2),16));
+    const light=rgb[0]*.2126+rgb[1]*.7152+rgb[2]*.0722>145;
+    $('device').style.setProperty('--page-text',light?'#28323a':'#e6f7ff');
+    $('device').style.setProperty('--page-muted',light?'#4e5a65':'#bad2e3');
+  }
   $('device').classList.toggle('work-palette',mascotVersion==='v2'&&state.mode==='work');
   $('device').classList.toggle('play-palette',mascotVersion==='v2'&&state.mode==='surf');
   syncPlayPanel();
+  $('studio-panel').hidden=mascotVersion!=='v2'||state.mode!=='work'||!$('device').classList.contains('controls-visible')||!!activeNotice;
+  paintStudio($('studio-panel'),studioReport);
   document.querySelectorAll('[data-mode]').forEach(b => b.setAttribute('aria-pressed', b.dataset.mode === state.mode));
   document.querySelectorAll('[data-expression]').forEach(b => b.setAttribute('aria-pressed', b.dataset.expression === state.expression));
   $('device-clock').textContent = $('hour-output').textContent = formatHour(state.hour);
@@ -151,7 +167,8 @@ function updateUI() {
   if (status !== previousStatus) { $('screen-status').textContent = status; previousStatus = status; }
 }
 
-function changeMode(mode) {
+function changeMode(mode,fromStudio=false) {
+  if(!fromStudio)autoStudioWork=false;
   if (!MODES.includes(mode) || mode === state.mode) return;
   transition = reducedMotion.matches ? null : {from: {...activity}, started: performance.now(), direction: MODES.indexOf(mode) > MODES.indexOf(state.mode) ? 1 : -1};
   activeNotice = null; touchEye = -1; previousEye = -1; state.mode = mode; updateUI();
@@ -203,7 +220,7 @@ function connect() {
   });
   $('pause').addEventListener('click', () => {state.paused = !state.paused; updateUI();});
   $('reset').addEventListener('click', () => {
-    state = initialState(); definition = structuredClone(original); time = 0; transition = null;
+    state = initialState(); definition = designDefinition(original,customDesign); time = 0; transition = null;
     greetingUntil=0;greeting=0;
     cancelHold(); touchEye = -1; previousEye = -1;
     Object.assign(motion, {x: 0, y: 0, targetX: 0, targetY: 0}); tiltOrigin = null; revealControls(false);
@@ -262,7 +279,7 @@ function connect() {
     pointer = {id: e.pointerId, x: e.clientX, y: e.clientY, lastX:e.clientX, lastY:e.clientY}; device.setPointerCapture(e.pointerId);
     if(mascotVersion==='v2') holdTimer=setTimeout(()=>{
       if(!pointer)return; holding=true; revealControls(false); cycleEyes();
-    },520);
+    },customDesign.holdMs);
   });
   device.addEventListener('pointerup', e => {
     clearTimeout(holdTimer);
@@ -291,6 +308,17 @@ try {
   definition = validateDefinitions(await characterResponse.json()); original = structuredClone(definition);
   rules = validateRules(await behaviorResponse.json());
   connect(); updateUI(); $('load-status').textContent = ''; requestAnimationFrame(frame);
+  if(mascotVersion==='v2')void connectDesignEditor({preview:setDesign,apply:setDesign,mode:value=>{changeMode(value);revealControls(false);}});
+  if(mascotVersion==='v2')connectStudio({receive:report=>{
+    studioReport=report;
+    const active=report.online&&report.agents.some(a=>a.status==='working'||a.status==='attention');
+    state.agentStatus=customDesign.studioAuto&&active?'working':'idle';
+    if(customDesign.studioAuto&&location.pathname!=='/customize'){
+      if(active&&state.mode==='live'){changeMode('work',true);autoStudioWork=true;}
+      else if(!active&&autoStudioWork&&state.mode==='work'&&report.online){changeMode('live',true);autoStudioWork=false;}
+    }
+    updateUI();
+  }});
 } catch (error) {
   $('load-status').textContent = 'Your companion could not load. Restart the local server and refresh.';
   console.error(error);

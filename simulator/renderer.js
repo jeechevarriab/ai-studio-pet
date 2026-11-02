@@ -136,7 +136,7 @@ function materialMask(width,height,radius,feather) {
     const alpha=coverage*lowerFade*(.87+mottle*.1+noise(x,y)*.03);
     const i=(y*410+x)*4;image.data[i]=image.data[i+1]=image.data[i+2]=255;image.data[i+3]=Math.round(alpha*255);
     // The depth field supplies soft edge occlusion without hard contour bands.
-    shading.data[i+3]=Math.round((1-surfaceDepth(x,y,width,height))*.43*coverage*255);
+    shading.data[i+3]=Math.round((1-surfaceDepth(x,y,width,height))*.86*coverage*255);
   }
   c.putImageData(image,0,0);rc.putImageData(shading,0,0);
   if(materialMasks.size>=8){materialMasks.clear();reliefMasks.clear();}
@@ -146,7 +146,7 @@ function materialMask(width,height,radius,feather) {
 // the outgoing page's cached texture or borrow its throttle window.
 export function floatingBody(definition, color, time, page = 'live') {
   const {width, height, radius, feather} = (definition.presentationV2 || defaultPresentationV2).task;
-  const slot=[page,width,height,radius,feather,definition.body.shadowColor,definition.body.highlightColor,definition.body.darkSurface].join(':');
+  const slot=[page,width,height,radius,feather,definition.body.shadowColor,definition.body.highlightColor,definition.body.darkSurface,definition.body.texture,definition.body.depth,definition.body.brightness].join(':');
   const cached=floatingCaches.get(slot);
   if(cached?.color===color)return cached.canvas;
   if(cached&&performance.now()-cached.updatedAt<80)return cached.canvas;
@@ -154,14 +154,14 @@ export function floatingBody(definition, color, time, page = 'live') {
   const c = canvas.getContext('2d');
   c.setTransform(1,0,0,1,0,0); c.globalAlpha=1; c.globalCompositeOperation='source-over'; c.filter='none'; c.clearRect(0,0,410,502);
   const gradient = c.createRadialGradient(167,205,8,200,249,240);
-  gradient.addColorStop(0, mixColor(color,definition.body.highlightColor||'#f1fff9',.58));
+  gradient.addColorStop(0, mixColor(color,definition.body.highlightColor||'#f1fff9',Math.min(.9,.58*(definition.body.brightness??1))));
   gradient.addColorStop(.34,definition.body.darkSurface?color:mixColor(color,'#ffffff',.22));
   gradient.addColorStop(.68,color);
   gradient.addColorStop(1,color+'58');
   c.fillStyle = gradient; c.fillRect(0, 0, 410, 502);
   c.globalCompositeOperation='destination-in';c.drawImage(materialMask(width,height,radius,feather),0,0);
   c.globalCompositeOperation = 'source-atop';
-  c.drawImage(reliefMasks.get([width,height,radius,feather].join(':')),0,0);
+  c.globalAlpha=Math.min(1,(definition.body.depth??1)/2);c.drawImage(reliefMasks.get([width,height,radius,feather].join(':')),0,0);c.globalAlpha=1;
   const shade = c.createRadialGradient(287,382,0,260,350,250);
   shade.addColorStop(0, definition.body.shadowColor + '8a');
   shade.addColorStop(1, definition.body.shadowColor + '00');
@@ -169,7 +169,7 @@ export function floatingBody(definition, color, time, page = 'live') {
   // Stable, irregular translucent pores; no animated noise, scanlines or hard grid.
   for(let y=85;y<430;y+=5)for(let x=18;x<398;x+=5) {
     const n=noise(x,y),m=cloud(x/19,y/19);
-    c.globalAlpha=definition.body.darkSurface ? .009+m*.012 : .035+m*.045;c.fillStyle=n>.45?'#ffffff':'#082b30';
+    c.globalAlpha=(definition.body.darkSurface ? .009+m*.012 : .035+m*.045)*(definition.body.texture??1);c.fillStyle=n>.45?'#ffffff':'#082b30';
     dot(c,x+(n-.5)*3,y+(noise(y,x)-.5)*3,.5+n*.65);
   }
   if(floatingCaches.size>=16&&!cached)floatingCaches.clear();
@@ -182,14 +182,16 @@ function litBody(image,definition,motion,time,still,page) {
   // every frame over a static depth/texture field, with no regenerated noise.
   let canvas=lightingCanvases.get(page);
   if(!canvas){canvas=new OffscreenCanvas(410,502);lightingCanvases.set(page,canvas);}
-  const c=canvas.getContext('2d'),light=depthLighting(motion,time,still),dark=definition.body.darkSurface;
+  const travel=definition.body.lightTravel??1;
+  const c=canvas.getContext('2d'),light=depthLighting({x:motion.x*travel,y:motion.y*travel},time,still||travel===0),dark=definition.body.darkSurface;
   c.setTransform(1,0,0,1,0,0);c.globalAlpha=1;c.globalCompositeOperation='source-over';c.clearRect(0,0,410,502);c.drawImage(image,0,0);
   c.globalCompositeOperation='source-atop';
+  c.globalAlpha=Math.min(1,(definition.body.light??1)/2);
   const highlight=c.createRadialGradient(light.lightX,light.lightY,4,light.lightX,light.lightY,170);
-  highlight.addColorStop(0,dark?'#197d9c0a':'#f3fff932');highlight.addColorStop(.5,dark?'#197d9c05':'#f3fff914');highlight.addColorStop(1,'#ffffff00');
+  highlight.addColorStop(0,dark?'#197d9c14':'#f3fff964');highlight.addColorStop(.5,dark?'#197d9c0a':'#f3fff928');highlight.addColorStop(1,'#ffffff00');
   c.fillStyle=highlight;c.fillRect(0,0,410,502);
   const shadow=c.createRadialGradient(light.shadowX,light.shadowY,10,light.shadowX,light.shadowY,205);
-  shadow.addColorStop(0,'#00080d30');shadow.addColorStop(1,'#00080d00');c.fillStyle=shadow;c.fillRect(0,0,410,502);
+  shadow.addColorStop(0,'#00080d60');shadow.addColorStop(1,'#00080d00');c.fillStyle=shadow;c.fillRect(0,0,410,502);
   return canvas;
 }
 
@@ -204,8 +206,7 @@ export function eyeMarks(points) {
     return {x,y,type,layer};
   });
 }
-export function asciiMarks(points,time=0,still=false) {
-  const alphabets=['.:+','x*o','O0#@'];
+export function asciiMarks(points,time=0,still=false,alphabets=['.:+','x*o','O0#@']) {
   return eyeMarks(points).map(mark=>{
     const seed=Math.abs(Math.round(mark.x*7+mark.y*11));
     const phase=(still?0:Math.max(0,time)/2200)+(seed%17)/17;
@@ -217,7 +218,8 @@ export function asciiMarks(points,time=0,still=false) {
 }
 function asciiEyes(ctx, points, radius, eyes, time, still) {
   const colors=eyes.layers||['#467b86','#2c5468',eyes.color];
-  const marks=asciiMarks(points,time,still);
+  const speed=eyes.flowSpeed??1;
+  const marks=asciiMarks(points,time*speed,still||speed===0,eyes.asciiPalette);
   ctx.save();const alpha=ctx.globalAlpha;
   ctx.textAlign='center';ctx.textBaseline='middle';
   ctx.font=`600 ${Math.max(4.5,radius*2.85)}px ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace`;
@@ -237,7 +239,8 @@ function largeFace(ctx, definition, expression, time, scale, offsetY, reducedMot
   const size=definition.presentationV2?.eyeSizeMultiplier||1.4;
   const dotSize=definition.presentationV2?.eyeDotMultiplier||.6;
   const density=definition.presentationV2?.eyeSampling||2;
-  const blink = !reducedMotion && expression.blinkMs > 0 && time % 5100 > 5100 - expression.blinkMs;
+  const blinkCycle=5100/(eyes.blinkSpeed||1);
+  const blink = !reducedMotion && eyes.blinkSpeed!==0 && expression.blinkMs > 0 && time % blinkCycle > blinkCycle - expression.blinkMs;
   const separation = eyes.separation * scale * 1.18 * (size/1.4);
   const spacing = eyes.spacing * scale * size;
   const points=[];
@@ -286,10 +289,11 @@ function touchFace(ctx, definition, index, scale, y, opacity=1, time=0, still=fa
   const size=definition.presentationV2?.eyeSizeMultiplier||1.4;
   scale*=size;
   ctx.save();ctx.globalAlpha=opacity;const points=[];
-  for(let side=0;side<2;side++) for(const [x,row] of eyeDots(expression[side?'right':'left'],definition.presentationV2?.eyeSampling||2)) {
+  const sampling=Math.max(1,(definition.presentationV2?.eyeSampling||2)*4.1/definition.eyes.spacing);
+  for(let side=0;side<2;side++) for(const [x,row] of eyeDots(expression[side?'right':'left'],sampling)) {
     points.push([205+(side?1:-1)*56*(size/1.4)+x*4.1*scale,y+row*4.1*scale]);
   }
-  asciiEyes(ctx,points,1.55*scale*(definition.eyes.dotRadius/2.2)*(definition.presentationV2?.eyeDotMultiplier||.6),definition.eyes,time,still);
+  asciiEyes(ctx,points,definition.eyes.dotRadius*scale*(definition.presentationV2?.eyeDotMultiplier||.6),definition.eyes,time,still);
   ctx.restore();
 }
 
@@ -306,43 +310,45 @@ export function homeColor(presentation, base, time) {
   return mixColor(palette[i],palette[(i+1)%palette.length],blend);
 }
 
-function softBlob(ctx, image, time, still) {
+function softBlob(ctx, image, time, still, amount=1) {
   if (still) return ctx.drawImage(image, 0, 0);
   // Draw the texture once. Smooth whole-surface deformation avoids sampling bands.
   ctx.save(); ctx.translate(205, 249);
-  ctx.transform(1 + Math.sin(time / 3100) * .009, Math.sin(time / 4700) * .005, Math.cos(time / 3900) * .006, 1 + Math.cos(time / 4100) * .01, 0, 0);
+  ctx.transform(1 + Math.sin(time / 3100) * .009*amount, Math.sin(time / 4700) * .005*amount, Math.cos(time / 3900) * .006*amount, 1 + Math.cos(time / 4100) * .01*amount, 0, 0);
   ctx.translate(-205, -249); ctx.drawImage(image, 0, 0); ctx.restore();
 }
 
 export function renderSceneV2(ctx, {activity, definition, time = 0, reducedMotion = false, motion = {x: 0, y: 0}, attention = 0, touchEye = -1, previousEye = -1, eyeBlend = 1, greeting=0}) {
   const presentation = definition.presentationV2 || defaultPresentationV2;
+  const custom=presentation.custom||{};
   const e = {...definition.expressions[activity.expression], color: (presentation.modeColors || defaultPresentationV2.modeColors)[activity.mode || 'live']};
   const t = reducedMotion ? 0 : time;
-  if((activity.mode||'live')==='live') e.color=mixColor(homeColor(presentation,e.color,t),e.color,attention);
+  if((activity.mode||'live')==='live'&&custom.colorCycle!==false) e.color=mixColor(homeColor(presentation,e.color,t),e.color,attention);
   const breath = Math.sin(t / e.periodMs * TAU);
   const workTheme=activity.mode==='work';
   const playTheme=activity.mode==='surf';
-  const paintedDefinition=workTheme?{...definition,body:{...definition.body,shadowColor:'#3b0605',highlightColor:'#fff4ef'},eyes:{...definition.eyes,color:'#361423',layers:['#9b4868','#62253e','#361423']}}:playTheme?{...definition,body:{...definition.body,shadowColor:'#000306',highlightColor:'#071117',darkSurface:true},eyes:{...definition.eyes,color:'#dcfcff',layers:['#3988bf','#7bdcf6','#dcfcff'],luminous:true}}:definition;
-  if(playTheme)e.color='#01070b';
-  ctx.fillStyle = workTheme?'#f2efed':playTheme?'#078fe3':'#050909'; ctx.fillRect(0, 0, 410, 502);
+  const eyeColor=custom[(activity.mode||'live')+'Eye'];
+  const paintedDefinition=workTheme?{...definition,body:{...definition.body,shadowColor:'#3b0605',highlightColor:'#fff4ef'},eyes:{...definition.eyes,color:eyeColor||'#361423',layers:['#9b4868','#62253e',eyeColor||'#361423']}}:playTheme?{...definition,body:{...definition.body,shadowColor:'#000306',highlightColor:'#071117',darkSurface:true},eyes:{...definition.eyes,color:eyeColor||'#dcfcff',layers:['#3988bf','#7bdcf6',eyeColor||'#dcfcff'],luminous:true}}:{...definition,eyes:{...definition.eyes,color:eyeColor||definition.eyes.color}};
+  if(playTheme)e.color=custom.surfColor||'#01070b';
+  ctx.fillStyle = custom[(activity.mode||'live')+'Background']||(workTheme?'#f2efed':playTheme?'#078fe3':'#050909'); ctx.fillRect(0, 0, 410, 502);
   ctx.save();
     // A single floating treatment across LIVE, WORK, SURF and SLEEP.
-    const offsetX = reducedMotion ? 0 : motion.x;
-    const offsetY = reducedMotion ? 0 : motion.y;
+    const offsetX = reducedMotion ? 0 : motion.x*(custom.bodySway??1);
+    const offsetY = reducedMotion ? 0 : motion.y*(custom.bodySway??1);
     ctx.translate(205 + offsetX, 249 + offsetY + attention * 231);
     ctx.rotate(reducedMotion ? 0 : offsetX * .0015);
-    ctx.scale(1 + attention * .3, 1 + attention * .3);
+    ctx.scale(1 + attention * ((custom.zoom??1.3)-1), 1 + attention * ((custom.zoom??1.3)-1));
     ctx.translate(-205, -249);
-    const bob = breath * e.bobPx * 1.7;
+    const bob = breath * e.bobPx * 1.7*(custom.float??1);
     const halo = ctx.createRadialGradient(205, 248, 30, 205, 248, 299);
     halo.addColorStop(0, e.color + '10'); halo.addColorStop(1, e.color + '00');
     ctx.fillStyle = halo; ctx.fillRect(0, 0, 410, 502);
     ctx.translate(0, bob);
     const body=floatingBody(paintedDefinition,e.color,t,activity.mode||'live');
-    softBlob(ctx,litBody(body,paintedDefinition,motion,t,reducedMotion,activity.mode||'live'),t,reducedMotion);
+    softBlob(ctx,litBody(body,paintedDefinition,motion,t,reducedMotion,activity.mode||'live'),t,reducedMotion,custom.liquid??1);
     const faceY=237-attention*27;
     // Eyes travel farther than the body, making the corner glance readable.
-    ctx.translate(reducedMotion?0:Math.max(-12,Math.min(12,motion.x*1.8)),reducedMotion?0:Math.max(-9,Math.min(9,motion.y*2)));
+    ctx.translate(reducedMotion?0:Math.max(-12,Math.min(12,motion.x*1.8))*(custom.gaze??1),reducedMotion?0:Math.max(-9,Math.min(9,motion.y*2))*(custom.gaze??1));
     if(greeting>.01) {
       ctx.save();ctx.globalAlpha=1-greeting;largeFace(ctx,paintedDefinition,e,t,presentation.task.eyeScale,faceY,reducedMotion);ctx.restore();
       ctx.save();ctx.globalAlpha=greeting;largeFace(ctx,paintedDefinition,definition.expressions.happy,t,presentation.task.eyeScale,faceY,reducedMotion);ctx.restore();
