@@ -15,6 +15,15 @@ html.app-only, .app-only body {background:#000;color-scheme:dark;min-width:0}
   .status-dot,.tiny-dot {display:inline-block;width:6px;height:6px;border-radius:50%;background:#448267} .sr-only {position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 }
 @layer layout {
+  .mascot-v2 .play-palette .device-header {color:#e4f7ff}
+  .mascot-v2 .play-palette .mode-nav button {color:#b7e8ff}
+  .mascot-v2 .play-palette .mode-nav button[aria-pressed="true"] {color:#fff}
+  .mascot-v2 .play-palette .mode-nav button[aria-pressed="true"]::after {background:#fff}
+  .mascot-v2 .play-palette .play-panel {color:#fff;--mascot-accent:#fff}
+  .mascot-v2 .play-palette .play-heading,.mascot-v2 .play-palette .play-detail,
+  .mascot-v2 .play-palette .play-tide,.mascot-v2 .play-palette .play-source,
+  .mascot-v2 .play-palette .play-row>span:first-child {color:#e6f7ff}
+  .mascot-v2 .play-palette .play-row {border-bottom-color:#ffffff32}
   .mascot-v2 .work-palette .device-header {color:#61504d}
   .mascot-v2 .work-palette .mode-nav button {color:#7c6a65}
   .mascot-v2 .work-palette .mode-nav button[aria-pressed="true"] {color:#c4271e}

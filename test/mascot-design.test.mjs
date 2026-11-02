@@ -1,9 +1,34 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {eyeDots,homeColor,floatingBody} from '../simulator/renderer.js';
-import {validateDefinitions} from '../simulator/engine.js';
+import {eyeDots,eyeMarks,homeColor,floatingBody} from '../simulator/renderer.js';
+import {validateDefinitions,createPickupDetector} from '../simulator/engine.js';
 const character=JSON.parse(readFileSync(new URL('../character/expressions.json',import.meta.url),'utf8'));
+
+test('layered eyes assign one separate dot or cross to every sample',()=>{
+  for(const expression of character.touchEyes){
+    const points=eyeDots(expression.left,2).map(([x,y])=>[149+x*7,237+y*7]);
+    const marks=eyeMarks(points);
+    assert.equal(marks.length,points.length);
+    assert.equal(new Set(marks.map(m=>m.x+':'+m.y)).size,points.length);
+    assert.deepEqual(new Set(marks.map(m=>m.type)),new Set(['dot','cross']));
+    assert(marks.every(m=>[0,1,2].includes(m.layer)));
+  }
+});
+test('pickup needs rest, ignores invalid samples and active UI, and has a cooldown',()=>{
+  const sample=(detector,start,end,eligible=true)=>{for(let t=start;t<=end;t+=100)assert.equal(detector([0,0,9.81],t,eligible),false);};
+  const d=createPickupDetector();
+  assert.equal(d([null,0,9],0),false);
+  assert.equal(d([2,0,9],100),false);
+  sample(d,200,2300);
+  assert.equal(d([2,0,9],2400),true);
+  sample(d,2500,4600);
+  assert.equal(d([2,0,9],4700),false);
+  const busy=createPickupDetector();sample(busy,0,2500,false);
+  assert.equal(busy([2,0,9],2600,false),false);
+  const resumed=createPickupDetector();sample(resumed,0,2300);
+  assert.equal(resumed([2,0,9],9000),false);
+});
 
 test('rapid alternating page renders keep independent tinted surfaces and a stable diffusion mask',()=>{
   const original=globalThis.OffscreenCanvas;
@@ -51,7 +76,7 @@ test('home color completes a seamless slow cycle and task diffusion is 30 percen
 });
 test('smaller eye dots use more samples while preserving the original eye coordinate bounds',()=>{
   assert.equal(character.presentationV2.eyeDotMultiplier,.6);
-  assert.equal(character.presentationV2.eyeSizeMultiplier,1.4);
+  assert.ok(Math.abs(character.presentationV2.eyeSizeMultiplier-1.4*1.3)<1e-10);
   for(const e of character.touchEyes)for(const side of ['left','right']){
     const detailed=eyeDots(e[side],2),original=eyeDots(e[side]);
     assert.ok(detailed.length>original.length*2);

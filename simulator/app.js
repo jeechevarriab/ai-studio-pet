@@ -1,4 +1,4 @@
-import {MODES, initialState, validateDefinitions, validateRules, deriveActivity, swipeMode, stepTime, formatHour, ease} from './engine.js';
+import {MODES, initialState, validateDefinitions, validateRules, deriveActivity, swipeMode, stepTime, formatHour, ease, createPickupDetector} from './engine.js';
 import {renderScene} from './renderer.js';
 
 const $ = id => document.getElementById(id);
@@ -11,6 +11,10 @@ let state = initialState(), definition, original, rules, activity, transition = 
 let time = 0, lastTimestamp = 0, previousStatus = '';
 let controlsTimer, suppressTap = false, tiltAttempted = false, tiltOrigin = null, lastPointerMotion = 0;
 let attention = 0, attentionTarget = 0, activeNotice = null;
+let greetingUntil=0,greeting=0,motionSeenAt=-Infinity;
+const pickupMotion=createPickupDetector(),pickupTilt=createPickupDetector();
+const pickupEligible=()=>!document.hidden&&state.mode==='live'&&state.agentStatus==='idle'&&state.event==='none'&&!state.paused&&!holding&&!$('device').classList.contains('controls-visible');
+function greetOnPickup(){greetingUntil=time+2800;$('screen-status').textContent='Happy to see you.';}
 let holdTimer, holding = false, touchEye = -1, previousEye = -1, eyeChangedAt = 0;
 const defaultModeColors = {live: '#66f4d5', work: '#ff392c', surf: '#b4f483', sleep: '#b2a9ee'};
 const modeColor = () => (definition.presentationV2?.modeColors || defaultModeColors)[state.mode];
@@ -99,24 +103,32 @@ function revealControls(visible = true) {
 async function enableTilt() {
   if (tiltAttempted || mascotVersion !== 'v2' || reducedMotion.matches) return;
   tiltAttempted = true;
-  const api = window.DeviceOrientationEvent;
-  if (!api) return;
   try {
-    // Called only by a real touch gesture; the browser retains its own consent prompt.
-    if (typeof api.requestPermission === 'function' && await api.requestPermission() !== 'granted') return;
-    window.addEventListener('deviceorientation', event => {
+    // Start both permission requests while the real touch activation is live.
+    const permission=api=>!api?Promise.resolve('unavailable'):typeof api.requestPermission==='function'?api.requestPermission():Promise.resolve('granted');
+    const [orientation,movement]=await Promise.allSettled([permission(window.DeviceOrientationEvent),permission(window.DeviceMotionEvent)]);
+    if(orientation.status==='fulfilled'&&orientation.value==='granted')window.addEventListener('deviceorientation', event => {
       if (!Number.isFinite(event.gamma) || !Number.isFinite(event.beta)) return;
       if (!tiltOrigin) tiltOrigin = {gamma: event.gamma, beta: event.beta};
+      const now=performance.now(),r=Math.PI/180,b=event.beta*r,g=event.gamma*r;
+      if(now-motionSeenAt>600&&pickupTilt([Math.sin(g)*Math.cos(b)*9.81,Math.sin(b)*9.81,Math.cos(g)*Math.cos(b)*9.81],now,pickupEligible()))greetOnPickup();
       if (performance.now() - lastPointerMotion < 800) return;
       motion.targetX = clamp((event.gamma - tiltOrigin.gamma) * .3, 6);
       motion.targetY = clamp((event.beta - tiltOrigin.beta) * .2, 4);
     }, {passive: true});
+    if(movement.status==='fulfilled'&&movement.value==='granted')window.addEventListener('devicemotion',event=>{
+      const a=event.accelerationIncludingGravity;
+      if(!a||![a.x,a.y,a.z].every(Number.isFinite))return;
+      motionSeenAt=performance.now();
+      if(pickupMotion([a.x,a.y,a.z],motionSeenAt,pickupEligible()))greetOnPickup();
+    },{passive:true});
   } catch { /* Pointer motion remains available if sensors are unavailable or denied. */ }
 }
 
 function updateUI() {
   activity = {...deriveActivity(state, rules), mode: state.mode};
   $('device').classList.toggle('work-palette',mascotVersion==='v2'&&state.mode==='work');
+  $('device').classList.toggle('play-palette',mascotVersion==='v2'&&state.mode==='surf');
   syncPlayPanel();
   document.querySelectorAll('[data-mode]').forEach(b => b.setAttribute('aria-pressed', b.dataset.mode === state.mode));
   document.querySelectorAll('[data-expression]').forEach(b => b.setAttribute('aria-pressed', b.dataset.expression === state.expression));
@@ -153,6 +165,7 @@ function frame(timestamp) {
   if (!document.hidden) time = stepTime(time, delta, state.paused, state.speed);
   const poseSmoothing = 1 - Math.exp(-Math.min(delta, 100) / 170);
   attention = reducedMotion.matches ? attentionTarget : attention + (attentionTarget - attention) * poseSmoothing;
+  greeting+=(time<greetingUntil&&state.mode==='live'?1-greeting:-greeting)*poseSmoothing;
   if (reducedMotion.matches) {motion.x = 0; motion.y = 0;}
   else if (!state.paused) {
     const smoothing = 1 - Math.exp(-Math.min(delta, 100) / 180);
@@ -160,7 +173,7 @@ function frame(timestamp) {
     motion.y += (motion.targetY - motion.y) * smoothing;
   }
   const eyeBlend = reducedMotion.matches ? 1 : Math.min(1, Math.max(0,(timestamp-eyeChangedAt)/140));
-  const render = current => renderScene(ctx, {activity: current, definition, time, reducedMotion: reducedMotion.matches, surf: state.surf, version: mascotVersion, motion, attention, touchEye, previousEye, eyeBlend});
+  const render = current => renderScene(ctx, {activity: current, definition, time, reducedMotion: reducedMotion.matches, surf: state.surf, version: mascotVersion, motion, attention, touchEye, previousEye, eyeBlend, greeting});
   if (transition && !reducedMotion.matches) {
     const progress = Math.min(1, (timestamp - transition.started) / 330);
     const offset = ease(progress) * 410 * transition.direction;
@@ -191,6 +204,7 @@ function connect() {
   $('pause').addEventListener('click', () => {state.paused = !state.paused; updateUI();});
   $('reset').addEventListener('click', () => {
     state = initialState(); definition = structuredClone(original); time = 0; transition = null;
+    greetingUntil=0;greeting=0;
     cancelHold(); touchEye = -1; previousEye = -1;
     Object.assign(motion, {x: 0, y: 0, targetX: 0, targetY: 0}); tiltOrigin = null; revealControls(false);
     for (const [id, value] of [['hour', 12], ['weather', 'clear'], ['surf', 2], ['agent', 'Web & Coding'], ['agent-status', 'idle'], ['speed', 1]]) $(id).value = value;

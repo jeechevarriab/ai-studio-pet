@@ -1,5 +1,25 @@
 # Progress — 2026-11-02
 
+## Layered eye glyphs, blue PLAY, gaze and pickup
+
+Follow-up correction: inverted the sleeping lid arcs (including the sleepy wink)
+and increased V2 eye size another 30%, from 1.4 to 1.82. Separation grows with
+the eye footprint to preserve the space between the two eyes.
+
+Replaced crosses etched inside every eye dot with disjoint dot/cross samples
+in three tinted depth bands, keeping the original eye contours and spacing.
+PLAY now uses blue behind a near-black diffused mascot with luminous cyan eyes;
+the grey highlight was removed following the owner's correction. Forecast/menu
+text uses light colors for readability. V1 and other page backgrounds preserved.
+
+Orientation adds a smoothed corner glance independent of body sway. After at
+least 1.8 seconds at rest in quiet LIVE, a deliberate gravity-vector change
+triggers a 2.8-second happy expression, with a six-second cooldown. Active menus,
+tasks, hidden tabs and pauses suppress pickup. Accelerometer and orientation
+fallback use memory-only samples; Safari permission starts on a real touch.
+Motion/denial hardware and installed iPhone behavior remain untested. Detector
+and independent eye-glyph regressions added; 19 automated checks pass.
+
 ## Diffused surface and swipe flicker
 
 Fixed a shared V2 texture canvas/throttle that could reuse another page's tint

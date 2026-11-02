@@ -70,3 +70,22 @@ export const formatHour = hour => {
   return `${normalized % 12 || 12}:00 ${normalized < 12 ? 'AM' : 'PM'}`;
 };
 export const ease = t => 1 - (1 - Math.max(0, Math.min(t, 1))) ** 3;
+
+// Arm only after a quiet interval, then greet once on a deliberate movement.
+// Sensor vectors stay in memory and are never sent to the server.
+export function createPickupDetector() {
+  let last=null,lastAt=-Infinity,quietAt=null,anchor=null,cooldownUntil=0;
+  return (vector,now,eligible=true)=>{
+    if(!Array.isArray(vector)||vector.length!==3||!vector.every(Number.isFinite)||!Number.isFinite(now))return false;
+    const gap=now-lastAt,delta=last?Math.hypot(...vector.map((v,i)=>v-last[i])):Infinity;
+    if(!eligible||gap>500||gap<0){quietAt=eligible?now:null;anchor=null;}
+    last=vector.slice();lastAt=now;
+    if(!eligible)return false;
+    if(anchor&&now>=cooldownUntil&&Math.hypot(...vector.map((v,i)=>v-anchor[i]))>1.2){
+      anchor=null;quietAt=null;cooldownUntil=now+6000;return true;
+    }
+    if(delta<.16){quietAt??=now;if(now-quietAt>=1800&&!anchor)anchor=vector.slice();}
+    else if(!anchor)quietAt=null;
+    return false;
+  };
+}
