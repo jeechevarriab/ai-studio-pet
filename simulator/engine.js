@@ -57,5 +57,8 @@ export function swipeMode(mode, dx, dy, width = 410) {
 export function stepTime(time, delta, paused, speed = 1) {
   return time + (paused ? 0 : Math.max(0, Math.min(delta, 100)) * Math.max(.25, Math.min(speed, 2)));
 }
-export const formatHour = hour => String(Math.floor(hour) % 24).padStart(2, '0') + ':00';
+export const formatHour = hour => {
+  const normalized = ((Math.floor(hour) % 24) + 24) % 24;
+  return `${normalized % 12 || 12}:00 ${normalized < 12 ? 'AM' : 'PM'}`;
+};
 export const ease = t => 1 - (1 - Math.max(0, Math.min(t, 1))) ** 3;
