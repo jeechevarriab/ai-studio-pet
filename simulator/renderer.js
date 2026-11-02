@@ -93,40 +93,66 @@ export function renderSceneV1(ctx, {activity, definition, time = 0, reducedMotio
 
 // V2 is a presentation change only. The V1 renderer above is preserved verbatim
 // apart from its export name; behavior, controls and expression data stay shared.
-let floatingCache = null;
+const floatingCaches = new Map();
+const materialMasks = new Map();
 const defaultPresentationV2 = {modeColors: {live: '#66f4d5', work: '#ff392c', surf: '#b4f483', sleep: '#b2a9ee'}, idle: {eyeScale: 1.65}, task: {width: 338, height: 300, radius: 112, feather: 13, eyeScale: 1.35}};
 
-function floatingBody(definition, color, time) {
+function noise(x,y) {
+  let n=Math.imul(x+7349,y+9127)^Math.imul(x,374761393)^Math.imul(y,668265263);
+  n=Math.imul(n^(n>>>13),1274126177);return ((n^(n>>>16))>>>0)/4294967295;
+}
+function cloud(x,y) {
+  const ix=Math.floor(x),iy=Math.floor(y),fx=x-ix,fy=y-iy;
+  const sx=fx*fx*(3-2*fx),sy=fy*fy*(3-2*fy);
+  return (noise(ix,iy)*(1-sx)+noise(ix+1,iy)*sx)*(1-sy)+(noise(ix,iy+1)*(1-sx)+noise(ix+1,iy+1)*sx)*sy;
+}
+function materialMask(width,height,radius,feather) {
+  const key=[width,height,radius,feather].join(':');
+  if(materialMasks.has(key))return materialMasks.get(key);
+  const canvas=new OffscreenCanvas(410,502),c=canvas.getContext('2d'),image=c.createImageData(410,502);
+  for(let y=0;y<502;y++)for(let x=0;x<410;x++) {
+    const mottle=cloud(x/19,y/19)*.65+cloud(x/7,y/7)*.35;
+    const qx=Math.abs(x-205)-width/2+radius,qy=Math.abs(y-249)-height/2+radius;
+    const distance=Math.hypot(Math.max(qx,0),Math.max(qy,0))+Math.min(Math.max(qx,qy),0)-radius+(mottle-.5)*7;
+    const f=feather*1.8,u=Math.max(0,Math.min(1,.5-distance/(f*2)));
+    const coverage=u*u*(3-2*u);
+    const lowerFade=1-Math.max(0,Math.min(1,(y-290)/170))**1.5;
+    const alpha=coverage*lowerFade*(.87+mottle*.1+noise(x,y)*.03);
+    const i=(y*410+x)*4;image.data[i]=image.data[i+1]=image.data[i+2]=255;image.data[i+3]=Math.round(alpha*255);
+  }
+  c.putImageData(image,0,0);if(materialMasks.size>=8)materialMasks.clear();materialMasks.set(key,canvas);return canvas;
+}
+// Each page owns a distinct canvas: drawing the incoming page must never repaint
+// the outgoing page's cached texture or borrow its throttle window.
+export function floatingBody(definition, color, time, page = 'live') {
   const {width, height, radius, feather} = (definition.presentationV2 || defaultPresentationV2).task;
-  const radii = [Math.sin(time/3100),Math.cos(time/4100),Math.sin(time/3700+2),Math.cos(time/4500+1)].map(v=>Math.round((radius+v*3)*4)/4);
-  const key = [width, height, radii, feather, color, definition.body.shadowColor].join(':');
-  if (floatingCache?.key === key) return floatingCache.canvas;
-  if(floatingCache && performance.now()-floatingCache.updatedAt<100) return floatingCache.canvas;
-  const canvas = floatingCache?.canvas || new OffscreenCanvas(410, 502);
+  const slot=[page,width,height,radius,feather,definition.body.shadowColor,definition.body.highlightColor].join(':');
+  const cached=floatingCaches.get(slot);
+  if(cached?.color===color)return cached.canvas;
+  if(cached&&performance.now()-cached.updatedAt<80)return cached.canvas;
+  const canvas = cached?.canvas || new OffscreenCanvas(410, 502);
   const c = canvas.getContext('2d');
   c.setTransform(1,0,0,1,0,0); c.globalAlpha=1; c.globalCompositeOperation='source-over'; c.filter='none'; c.clearRect(0,0,410,502);
-  c.filter = `blur(${feather}px)`;
-  c.fillStyle = '#fff';
-  rounded(c, 205 - width / 2, 249 - height / 2, width, height, radii); c.fill();
-  c.filter = 'none'; c.globalCompositeOperation = 'source-in';
-  const gradient = c.createLinearGradient(72, 103, 282, 410);
-  gradient.addColorStop(0, definition.body.highlightColor||'#e6fff8');
-  gradient.addColorStop(.21, color);
-  gradient.addColorStop(.49, color + 'ed');
-  gradient.addColorStop(.76, color + '5c');
-  gradient.addColorStop(1, color + '00');
+  const gradient = c.createRadialGradient(167,205,8,200,249,240);
+  gradient.addColorStop(0, mixColor(color,definition.body.highlightColor||'#f1fff9',.58));
+  gradient.addColorStop(.34,mixColor(color,'#ffffff',.22));
+  gradient.addColorStop(.68,color);
+  gradient.addColorStop(1,color+'58');
   c.fillStyle = gradient; c.fillRect(0, 0, 410, 502);
+  c.globalCompositeOperation='destination-in';c.drawImage(materialMask(width,height,radius,feather),0,0);
   c.globalCompositeOperation = 'source-atop';
-  const shade = c.createRadialGradient(288, 361, 0, 288, 361, 260);
-  shade.addColorStop(0, definition.body.shadowColor + 'bd');
+  const shade = c.createRadialGradient(287,382,0,260,350,250);
+  shade.addColorStop(0, definition.body.shadowColor + '8a');
   shade.addColorStop(1, definition.body.shadowColor + '00');
   c.fillStyle = shade; c.fillRect(0, 0, 410, 502);
-  c.fillStyle = '#07292d';
-  for (let y = 104; y < 425; y += 6) for (let x = 25; x < 389; x += 6) {
-    c.globalAlpha = Math.min(.17, Math.max(0, (y - 170) / 1200));
-    dot(c, x, y, .85);
+  // Stable, irregular translucent pores; no animated noise, scanlines or hard grid.
+  for(let y=85;y<430;y+=5)for(let x=18;x<398;x+=5) {
+    const n=noise(x,y),m=cloud(x/19,y/19);
+    c.globalAlpha=.035+m*.045;c.fillStyle=n>.45?'#ffffff':'#082b30';
+    dot(c,x+(n-.5)*3,y+(noise(y,x)-.5)*3,.5+n*.65);
   }
-  floatingCache = {key, canvas, updatedAt:performance.now()};
+  if(floatingCaches.size>=16&&!cached)floatingCaches.clear();
+  floatingCaches.set(slot,{color,canvas,updatedAt:performance.now()});
   return canvas;
 }
 
@@ -249,7 +275,7 @@ export function renderSceneV2(ctx, {activity, definition, time = 0, reducedMotio
     halo.addColorStop(0, e.color + '10'); halo.addColorStop(1, e.color + '00');
     ctx.fillStyle = halo; ctx.fillRect(0, 0, 410, 502);
     ctx.translate(0, bob);
-    softBlob(ctx, floatingBody(paintedDefinition, e.color, t), t, reducedMotion);
+    softBlob(ctx, floatingBody(paintedDefinition, e.color, t, activity.mode||'live'), t, reducedMotion);
     const faceY=237-attention*27;
     if(touchEye>=0) {
       if(previousEye>=0&&eyeBlend<1) touchFace(ctx,paintedDefinition,previousEye,presentation.task.eyeScale,faceY,1-eyeBlend);

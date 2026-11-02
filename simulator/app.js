@@ -164,8 +164,11 @@ function frame(timestamp) {
   if (transition && !reducedMotion.matches) {
     const progress = Math.min(1, (timestamp - transition.started) / 330);
     const offset = ease(progress) * 410 * transition.direction;
-    ctx.save(); ctx.translate(-offset, 0); render(transition.from); ctx.restore();
-    ctx.save(); ctx.translate(410 * transition.direction - offset, 0); render(activity); ctx.restore();
+    // Clip each page to its own bounds. An offscreen halo must not paint over
+    // the neighbouring page, especially across the white WORK background.
+    ctx.clearRect(0,0,410,502);
+    ctx.save(); ctx.translate(-offset, 0); ctx.beginPath();ctx.rect(0,0,410,502);ctx.clip();render(transition.from); ctx.restore();
+    ctx.save(); ctx.translate(410 * transition.direction - offset, 0);ctx.beginPath();ctx.rect(0,0,410,502);ctx.clip();render(activity); ctx.restore();
     if (progress === 1) transition = null;
   } else render(activity);
   requestAnimationFrame(frame);

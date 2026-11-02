@@ -1,4 +1,4 @@
-const CACHE = 'studio-mascot-shell-v1';
+const CACHE = 'studio-mascot-shell-v2-diffusion';
 const SHELL = ['/app', '/simulator/style.css', '/simulator/app-view.js', '/simulator/app.js',
   '/simulator/engine.js', '/simulator/renderer.js', '/character/expressions.json',
   '/scenes/behavior.json', '/manifest.webmanifest', '/icons/mascot.svg',

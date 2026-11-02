@@ -1,5 +1,17 @@
 # Progress — 2026-11-02
 
+## Diffused surface and swipe flicker
+
+Fixed a shared V2 texture canvas/throttle that could reuse another page's tint
+while both pages rendered during a swipe. Each page now owns its cached surface;
+page clipping also prevents glows spilling over a neighbouring background.
+Replaced the hard gradient/grid finish with a broad diffusion mask, stable
+multi-scale mottling, irregular translucent pores and a luminous center. Motion,
+eyes, menus and V1 are preserved. The surface no longer depends on Canvas blur
+filter support. A regression exercises 80 alternating page draws and checks
+surface ownership/tint and soft mask coverage; 17 tests pass. Browser desktop
+and phone-size checks passed; physical iPhone playback remains untested.
+
 ## Public app authorized and published
 
 Owner explicitly approved making only the mascot public for iPhone access.
