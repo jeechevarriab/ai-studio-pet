@@ -1,4 +1,4 @@
-import {DESIGN_GROUPS,DESIGN_DEFAULTS,validateDesign,editModeValue,undoModeValue,designForModeApply,modeSetting,settingHistoryKey,reconcileSavedDesign} from './design.js';
+import {DESIGN_GROUPS,DESIGN_DEFAULTS,DITHER_SETTING_KEYS,validateDesign,editModeValue,undoModeValue,designForModeApply,modeSetting,settingHistoryKey,reconcileSavedDesign} from './design.js';
 export async function connectDesignEditor({preview,apply,mode}){
  const editing=location.pathname==='/customize';
  let selectedMode='live';
@@ -8,13 +8,15 @@ export async function connectDesignEditor({preview,apply,mode}){
  const status=document.createElement('p');status.className='editor-status';status.setAttribute('role','status');
  const notify=message=>{status.textContent=message;};
  const button=(label,action,cls='')=>{const b=document.createElement('button');b.type='button';b.textContent=label;b.className=cls;b.addEventListener('click',action);return b;};
- const controls=new Map(),outputs=new Map(),undos=new Map(),applies=new Map();
+ const controls=new Map(),outputs=new Map(),undos=new Map(),applies=new Map(),rows=new Map();
  let accessNotice=null,modeHint=null;
  const refresh=()=>{
   if(modeHint)modeHint.textContent=({live:'LIVE',work:'WORK',surf:'PLAY',sleep:'SLEEP'})[selectedMode]+' settings · Eyes, finish, shape and motion save separately for each mode.';
   for(const group of DESIGN_GROUPS)for(const f of group.fields){const input=controls.get(f.key);if(!input)continue;
    if(f.type==='checkbox')input.checked=fieldValue(draft,f.key);else input.value=fieldValue(draft,f.key);
    if(outputs.has(f.key))outputs.get(f.key).textContent=String(fieldValue(draft,f.key));
+   if(f.key.startsWith('ditherPalette')&&f.key!=='ditherPalette')rows.get(f.key).hidden=fieldValue(draft,'ditherPalette')!=='custom'||/^ditherPalette\d+$/.test(f.key)&&Number(f.key.slice(13))>fieldValue(draft,'ditherPaletteCount');
+   input.disabled=(['ditherWaveColor','ditherBackground','ditherColors'].includes(f.key)&&fieldValue(draft,'ditherPalette')!=='none')||(['ditherMouseRadius','ditherMouseStrength','ditherTrail','ditherMouseEffect'].includes(f.key)&&!fieldValue(draft,'ditherMouse'))||(f.key==='ditherSpeed'&&fieldValue(draft,'ditherDisableAnimation'))||(f.key==='ditherBackground'&&fieldValue(draft,'ditherTransparent'));
    undos.get(f.key).disabled=!history[settingHistoryKey(selectedMode,f.key)]?.length;
    applies.get(f.key).disabled=loading||saving||!owner||fieldValue(draft,f.key)===fieldValue(applied,f.key);
    applies.get(f.key).title=loading?'Loading your design':!owner?'Sign in with the owner account to save':saving?'Saving…':fieldValue(draft,f.key)===fieldValue(applied,f.key)?'Change this setting to activate Apply':'Save this setting across devices';
@@ -25,7 +27,7 @@ export async function connectDesignEditor({preview,apply,mode}){
  async function saveDesign(key=null){
   if(saving||!owner||loading)return;
   const submitted=designForModeApply(applied,draft,selectedMode,key),draftAtSubmit=structuredClone(draft);
-  const selection=key===null?null:{mode:selectedMode,key};
+  const selection=key===null?null:{mode:selectedMode,key,keys:[...(key.startsWith('dither')&&fieldValue(draft,'colorMode')==='dither'?['colorMode']:[]),...(key==='ditherPreset'?DITHER_SETTING_KEYS:[key])]};
   saving=true;refresh();notify('Saving '+(key?'this setting':'your design')+'…');
   try{
    const response=await fetch('/api/design',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({settings:submitted,revision})});
@@ -60,7 +62,7 @@ export async function connectDesignEditor({preview,apply,mode}){
    for(const f of group.fields){
     const row=document.createElement('div');row.className='editor-setting';const label=document.createElement('label');label.htmlFor='setting-'+f.key;label.textContent=f.label;
     const input=document.createElement(f.type==='select'?'select':'input');input.id='setting-'+f.key;if(f.type!=='select')input.type=f.type;input.setAttribute('aria-label',f.label);
-    if(f.type==='select')for(const value of f.options){const o=document.createElement('option');o.value=value;o.textContent=f.key==='colorMode'?({aurora:'Aurora',iridescence:'Iridescence',bends:'Color Bends',silk:'Silk'})[value]:value.startsWith('touch-')?['Orbit','Daydream','Glee','Lilt','Prism','Ripple','Intent','Sideglance','Soft wink','Starlit'][Number(value.slice(6))]:value==='auto'?'Follow activity':value[0].toUpperCase()+value.slice(1);input.append(o);}
+    if(f.type==='select')for(const value of f.options){const o=document.createElement('option');o.value=value;o.textContent=f.key==='colorMode'?({cloud:'Cloud · Original',dither:'Dither'})[value]:f.key==='ditherPattern'?({bayer:'Bayer 8×8',bayer4:'Bayer 4×4',bayer2:'Bayer 2×2',halftone:'Halftone',lines:'Lines',crosshatch:'Crosshatch',noise:'Noise',none:'None'})[value]:value==='gameboy'?'Game Boy':value.startsWith('touch-')?['Orbit','Daydream','Glee','Lilt','Prism','Ripple','Intent','Sideglance','Soft wink','Starlit'][Number(value.slice(6))]:value==='auto'?'Follow activity':value[0].toUpperCase()+value.slice(1);input.append(o);}
     if(f.type==='range'){input.min=f.min;input.max=f.max;input.step=f.step;const output=document.createElement('output');output.htmlFor=input.id;outputs.set(f.key,output);label.append(output);}
     if(f.type==='text')input.maxLength=12;
     const undo=button('Undo',()=>{draft=undoModeValue(draft,history,selectedMode,f.key);preview(draft);refresh();notify('Previous '+f.label.toLowerCase()+' restored. Apply to save.');},'setting-undo');undo.setAttribute('aria-label','Undo '+f.label);undos.set(f.key,undo);
@@ -72,7 +74,7 @@ export async function connectDesignEditor({preview,apply,mode}){
     const changedInput=()=>{if(loading)return;try{const value=f.type==='range'?Number(input.value):f.type==='checkbox'?input.checked:input.value;const changed=value!==fieldValue(draft,f.key);if(!changed)return;draft=editModeValue(draft,dragging&&recorded?{}:history,selectedMode,f.key,value);if(dragging)recorded=true;preview(draft);refresh();notify('Previewing changes. Apply to save across devices.');}catch(error){notify(error.message);}};
     input.addEventListener('input',changedInput);
     input.addEventListener('change',changedInput);
-    controls.set(f.key,input);row.append(label,input,actions);section.append(row);
+    controls.set(f.key,input);rows.set(f.key,row);row.append(label,input,actions);section.append(row);
    }shell.append(section);
   }
   const footer=document.createElement('footer');footer.className='editor-actions';

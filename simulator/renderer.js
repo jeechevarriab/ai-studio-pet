@@ -145,12 +145,13 @@ function materialMask(width,height,radius,feather) {
 }
 // Each page owns a distinct canvas: drawing the incoming page must never repaint
 // the outgoing page's cached texture or borrow its throttle window.
-export function floatingBody(definition, color, time, page = 'live') {
+export function floatingBody(definition, color, time, page = 'live', still=false) {
   const {width, height, radius, feather} = (definition.presentationV2 || defaultPresentationV2).task;
-  const finish=finishName(definition.presentationV2?.custom?.colorMode||'aurora');
-  const slot=[page,finish,definition.presentationV2?.custom?.[page+'Eye'],width,height,radius,feather,definition.body.shadowColor,definition.body.highlightColor,definition.body.darkSurface,definition.body.texture,definition.body.depth,definition.body.brightness].join(':');
+  const settings=definition.presentationV2?.custom||{},finish=finishName(settings.colorMode||'cloud');
+  const signature=finish==='dither'?JSON.stringify(Object.fromEntries(Object.entries(settings).filter(([key])=>key.startsWith('dither')))):'';
+  const slot=[page,finish,signature,width,height,radius,feather,definition.body.shadowColor,definition.body.highlightColor,definition.body.darkSurface,definition.body.texture,definition.body.depth,definition.body.brightness].join(':');
   const cached=floatingCaches.get(slot);
-  if(cached?.color===color&&Math.floor(time/33)===cached.tick)return cached.canvas;
+  if(cached?.color===color&&(finish==='cloud'||Math.floor(time/33)===cached.tick))return cached.canvas;
   if(cached&&performance.now()-cached.updatedAt<25)return cached.canvas;
   const canvas = cached?.canvas || new OffscreenCanvas(410, 502);
   const c = canvas.getContext('2d');
@@ -161,7 +162,7 @@ export function floatingBody(definition, color, time, page = 'live') {
   gradient.addColorStop(.68,color);
   gradient.addColorStop(1,color+'58');
   c.fillStyle = gradient; c.fillRect(0, 0, 410, 502);
-  drawColorFinish(c,{finish,color,time,dark:definition.body.darkSurface});
+  drawColorFinish(c,{finish,time,page,settings,still});
   c.globalCompositeOperation='destination-in';c.drawImage(materialMask(width,height,radius,feather),0,0);
   c.globalCompositeOperation = 'source-atop';
   c.globalAlpha=Math.min(1,(definition.body.depth??1)/2);c.drawImage(reliefMasks.get([width,height,radius,feather].join(':')),0,0);c.globalAlpha=1;
@@ -356,7 +357,7 @@ export function renderSceneV2(ctx, {activity, definition, time = 0, reducedMotio
     halo.addColorStop(0, e.color + '10'); halo.addColorStop(1, e.color + '00');
     ctx.fillStyle = halo; ctx.fillRect(0, 0, 410, 502);
     ctx.translate(0, bob);
-    const body=floatingBody(paintedDefinition,e.color,t,activity.mode||'live');
+    const body=floatingBody(paintedDefinition,e.color,t,activity.mode||'live',reducedMotion);
     softBlob(ctx,litBody(body,paintedDefinition,motion,t,reducedMotion,activity.mode||'live'),t,reducedMotion,custom.liquid??1);
     const faceY=237-attention*27;
     ctx.filter='none';

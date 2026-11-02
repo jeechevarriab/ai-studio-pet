@@ -5,11 +5,11 @@ test('mode settings survive switching, serialization and reload without leaking 
  const base=validateDesign({...DESIGN_DEFAULTS,eyeSize:110}),history={};
  let draft=editModeValue(base,history,'live','expression','touch-0');
  draft=editModeValue(draft,history,'work','expression','focused');
- draft=editModeValue(draft,history,'surf','colorMode','silk');
+ draft=editModeValue(draft,history,'surf','colorMode','dither');
  const saved=validateDesign(JSON.parse(JSON.stringify(designForModeApply(base,draft,'live'))));
  assert.equal(resolveModeDesign(saved,'live').expression,'touch-0');
  assert.equal(resolveModeDesign(saved,'work').expression,'focused');
- assert.equal(resolveModeDesign(saved,'surf').colorMode,'silk');
+ assert.equal(resolveModeDesign(saved,'surf').colorMode,'dither');
  assert.equal(resolveModeDesign(saved,'sleep').expression,'auto');
  for(const mode of ['live','work','surf','sleep'])assert.equal(resolveModeDesign(saved,mode).eyeSize,110);
  const undone=undoModeValue(saved,history,'live','expression');

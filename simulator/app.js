@@ -1,5 +1,6 @@
 import {MODES, initialState, validateDefinitions, validateRules, deriveActivity, swipeMode, stepTime, formatHour, ease, createPickupDetector} from './engine.js';
 import {renderScene} from './renderer.js';
+import {setDitherPointer} from './color-finishes.js';
 import {DESIGN_DEFAULTS,designDefinition,resolveModeDesign} from './design.js';
 import {connectDesignEditor} from './editor.js';
 import {connectStudio,paintStudio} from './studio.js';
@@ -250,6 +251,7 @@ function connect() {
   if (mascotVersion === 'v2') device.setAttribute('aria-label', 'Studio Mascot. Touch or press Enter to reveal controls. Swipe or use arrow keys to change mode.');
   device.addEventListener('pointermove', e => {
     if (mascotVersion !== 'v2') return;
+    const bounds=device.getBoundingClientRect();setDitherPointer(state.mode,{x:(e.clientX-bounds.left)/bounds.width,y:(e.clientY-bounds.top)/bounds.height,inside:true,time});
     if (pointer && !holding && Math.hypot(e.clientX-pointer.x,e.clientY-pointer.y)>12) clearTimeout(holdTimer);
     if (holding && pointer) {
       if (e.cancelable) e.preventDefault();
@@ -264,7 +266,7 @@ function connect() {
     motion.targetX = clamp(((e.clientX - rect.left) / rect.width - .5) * 12, 6);
     motion.targetY = clamp(((e.clientY - rect.top) / rect.height - .5) * 8, 4);
   });
-  device.addEventListener('pointerleave', () => {motion.targetX = 0; motion.targetY = 0;});
+  device.addEventListener('pointerleave', () => {motion.targetX = 0; motion.targetY = 0;setDitherPointer(state.mode,{inside:false,time});});
   device.addEventListener('click', e => {
     if (suppressTap) {suppressTap = false; return;}
     revealControls(e.target.closest('button') ? true : !device.classList.contains('controls-visible'));
@@ -279,6 +281,7 @@ function connect() {
   });
   device.addEventListener('pointerdown', e => {
     if (e.target.closest('button,a') || !e.isPrimary || e.button !== 0) return;
+    const bounds=device.getBoundingClientRect();setDitherPointer(state.mode,{x:(e.clientX-bounds.left)/bounds.width,y:(e.clientY-bounds.top)/bounds.height,inside:true,click:true,time});
     suppressTap=false;
     pointer = {id: e.pointerId, x: e.clientX, y: e.clientY, lastX:e.clientX, lastY:e.clientY}; device.setPointerCapture(e.pointerId);
     if(mascotVersion==='v2') holdTimer=setTimeout(()=>{

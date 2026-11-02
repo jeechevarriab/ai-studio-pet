@@ -17,3 +17,16 @@ surface is immediately copied into separate per-page masked Canvas surfaces.
 Existing eye rendering, page backgrounds and owner-only design saving remain
 independent. WebGL2 failure uses the original soft gradient; device performance
 and parity with firmware are not claimed.
+
+Current runtime (owner correction, 2026-11-02): only original Cloud and React Bits
+Dither are selectable. Aurora/Iridescence/Color Bends/Silk sources above are
+historical provenance and are no longer shipped as runtime shaders.
+Dither.jsx, Dither.css, DitherDemo.jsx and DitherPresets.js are pinned upstream
+source from the same revision. The generator extracts WAVE_FRAGMENT and
+DITHER_FRAGMENT, preserving the two-pass field/dither pipeline. The adapter
+reuses the mascot clock and pointer input, with independent page state, masked
+surfaces, a bounded field framebuffer, reduced motion and pause support.
+All live-page Customize controls are represented, plus transparent background,
+render detail and editable custom palette colors. Developer-only className/style
+are not exposed as design controls. No upstream component/tool is redistributed
+as a standalone product.
