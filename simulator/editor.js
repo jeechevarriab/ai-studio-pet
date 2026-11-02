@@ -1,4 +1,4 @@
-import {DESIGN_GROUPS,DESIGN_DEFAULTS,DITHER_SETTING_KEYS,validateDesign,editModeValue,undoModeValue,designForModeApply,modeSetting,settingHistoryKey,reconcileSavedDesign} from './design.js';
+import {DESIGN_GROUPS,DESIGN_DEFAULTS,DITHER_SETTING_KEYS,validateDesign,editModeValue,undoModeValue,designForModeApply,modeSetting,settingHistoryKey,reconcileSavedDesign,randomizeDither,restoreDitherRandomization,loadInitialDesign} from './design.js';
 export async function connectDesignEditor({preview,apply,mode}){
  const editing=location.pathname==='/customize';
  let selectedMode='live';
@@ -9,7 +9,7 @@ export async function connectDesignEditor({preview,apply,mode}){
  const notify=message=>{status.textContent=message;};
  const button=(label,action,cls='')=>{const b=document.createElement('button');b.type='button';b.textContent=label;b.className=cls;b.addEventListener('click',action);return b;};
  const controls=new Map(),outputs=new Map(),undos=new Map(),applies=new Map(),rows=new Map();
- let accessNotice=null,modeHint=null;
+ let accessNotice=null,modeHint=null,randomButton=null,undoRandomButton=null,applyRandomButton=null,randomHistory={};
  const refresh=()=>{
   if(modeHint)modeHint.textContent=({live:'LIVE',work:'WORK',surf:'PLAY',sleep:'SLEEP'})[selectedMode]+' settings · Eyes, finish, shape and motion save separately for each mode.';
   for(const group of DESIGN_GROUPS)for(const f of group.fields){const input=controls.get(f.key);if(!input)continue;
@@ -22,6 +22,9 @@ export async function connectDesignEditor({preview,apply,mode}){
    applies.get(f.key).title=loading?'Loading your design':!owner?'Sign in with the owner account to save':saving?'Saving…':fieldValue(draft,f.key)===fieldValue(applied,f.key)?'Change this setting to activate Apply':'Save this setting across devices';
   }
   if(saveButton)saveButton.disabled=loading||saving||!owner;
+  if(randomButton)randomButton.disabled=loading||saving;
+  if(undoRandomButton)undoRandomButton.disabled=loading||saving||!randomHistory[selectedMode]?.length;
+  if(applyRandomButton)applyRandomButton.disabled=loading||saving||!owner||!['colorMode',...DITHER_SETTING_KEYS].some(key=>fieldValue(draft,key)!==fieldValue(applied,key));
  };
  let saveButton=null;
  async function saveDesign(key=null){
@@ -50,7 +53,7 @@ export async function connectDesignEditor({preview,apply,mode}){
   const close=document.createElement('a');close.href='/app';close.textContent='Open Mascot ↗';header.append(close);shell.append(header);
   accessNotice=document.createElement('div');accessNotice.className='editor-access';accessNotice.setAttribute('role','status');accessNotice.textContent='Connecting to your saved design…';header.append(accessNotice);
   const modes=document.createElement('div');modes.className='editor-mode-picker';
-  for(const [value,label]of [['live','LIVE'],['work','WORK'],['surf','PLAY'],['sleep','SLEEP']])modes.append(button(label,()=>{selectedMode=value;mode(value);preview(draft);refresh();modes.querySelectorAll('button').forEach(b=>b.classList.toggle('selected',b.textContent===label));}));
+  for(const [value,label]of [['live','LIVE'],['work','WORK'],['surf','PLAY'],['sleep','SLEEP']])modes.append(button(label,()=>{if(loading)return;selectedMode=value;mode(value);preview(draft);refresh();modes.querySelectorAll('button').forEach(b=>b.classList.toggle('selected',b.textContent===label));}));
   modes.firstChild.classList.add('selected');shell.append(modes);
   document.addEventListener('mascot-mode-change',event=>{if(!['live','work','surf','sleep'].includes(event.detail?.mode))return;selectedMode=event.detail.mode;const label=({live:'LIVE',work:'WORK',surf:'PLAY',sleep:'SLEEP'})[selectedMode];modes.querySelectorAll('button').forEach(b=>b.classList.toggle('selected',b.textContent===label));refresh();});
   modeHint=document.createElement('p');modeHint.className='editor-description';shell.append(modeHint);
@@ -59,6 +62,13 @@ export async function connectDesignEditor({preview,apply,mode}){
    const section=document.createElement('section');section.className='editor-group';section.id='edit-'+group.id;section.hidden=group.id!=='colors';
    const tab=button(group.label,()=>{shell.querySelectorAll('.editor-group').forEach(s=>s.hidden=s!==section);tabs.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b===tab));});tab.setAttribute('aria-pressed',group.id==='colors');tabs.append(tab);
    const heading=document.createElement('h2');heading.textContent=group.label;const description=document.createElement('p');description.className='editor-description';description.textContent=group.description;section.append(heading,description);
+   if(group.id==='dither'){
+    const actions=document.createElement('div');actions.className='dither-random-actions';
+    randomButton=button('Randomize Dither',()=>{const result=randomizeDither(draft,selectedMode);const stack=randomHistory[selectedMode]||=[];stack.push(result.snapshot);if(stack.length>50)stack.shift();draft=result.draft;preview(draft);refresh();notify('Random Dither look previewed for this mode. Apply Dither look to save.');});
+    undoRandomButton=button('Undo randomize',()=>{const previous=randomHistory[selectedMode]?.pop();if(previous){draft=restoreDitherRandomization(draft,selectedMode,previous);preview(draft);refresh();notify('Previous Dither look restored. Apply to save.');}});
+    applyRandomButton=button('Apply Dither look',()=>void saveDesign('ditherPreset'));
+    actions.append(randomButton,undoRandomButton,applyRandomButton);section.append(actions);
+   }
    for(const f of group.fields){
     const row=document.createElement('div');row.className='editor-setting';const label=document.createElement('label');label.htmlFor='setting-'+f.key;label.textContent=f.label;
     const input=document.createElement(f.type==='select'?'select':'input');input.id='setting-'+f.key;if(f.type!=='select')input.type=f.type;input.setAttribute('aria-label',f.label);
@@ -78,14 +88,14 @@ export async function connectDesignEditor({preview,apply,mode}){
    }shell.append(section);
   }
   const footer=document.createElement('footer');footer.className='editor-actions';
-  const discard=button('Discard changes',()=>{draft={...applied};history={};preview(draft);refresh();notify('Back to your saved design.');});
+  const discard=button('Discard changes',()=>{if(loading)return;draft={...applied};history={};randomHistory={};preview(draft);refresh();notify('Back to your saved design.');});
   saveButton=button('Apply & save',()=>void saveDesign(),'editor-apply');footer.append(discard,saveButton);shell.append(status,footer);document.body.append(shell);
   notify('Loading your saved design…');refresh();
  }
  const refreshSaved=async()=>{
-  const response=await fetch('/api/design',{cache:'no-store'});if(!response.ok)throw Error('Cloud design unavailable');const data=await response.json();applied=validateDesign(data.settings);revision=data.revision;try{localStorage.setItem('mascot-confirmed-design',JSON.stringify({settings:applied,revision}));}catch{}return applied;
+  const response=await fetch('/api/design',{cache:'no-store',signal:AbortSignal.timeout(12000)});if(!response.ok)throw Error('Cloud design unavailable');const data=await response.json();applied=validateDesign(data.settings);revision=data.revision;try{localStorage.setItem('mascot-confirmed-design',JSON.stringify({settings:applied,revision}));}catch{}return applied;
  };
- try{await refreshSaved();accept(applied);}catch{try{const cached=JSON.parse(localStorage.getItem('mascot-confirmed-design'));applied=validateDesign(cached.settings);revision=cached.revision||0;}catch{}accept(applied);if(editing)notify('Cloud save is unavailable. Preview works; saving requires the live site.');}
+ try{const initial=await loadInitialDesign(refreshSaved,()=>{const cached=JSON.parse(localStorage.getItem('mascot-confirmed-design'));if(!cached?.settings)throw Error('No saved design');revision=cached.revision||0;return cached.settings;});applied=initial.settings;accept(applied);if(initial.source==='cache'&&editing)notify('Showing your last saved design. Cloud is unavailable.');}catch(error){notify(error.message);if(accessNotice)accessNotice.textContent=error.message;return {loaded:false,error:error.message};}
  draft={...applied};loading=false;
  if(editing){
   try{const response=await fetch('/api/session',{cache:'no-store'});const session=await response.json();owner=session.owner===true;
@@ -100,5 +110,5 @@ export async function connectDesignEditor({preview,apply,mode}){
   window.addEventListener('pagehide',()=>clearInterval(timer));
   window.addEventListener('pageshow',event=>{if(event.persisted){clearInterval(timer);timer=setInterval(poll,20000);poll();}});
  }
- return {get settings(){return draft;}};
+ return {loaded:true,get settings(){return draft;}};
 }

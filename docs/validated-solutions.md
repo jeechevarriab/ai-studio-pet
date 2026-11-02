@@ -27,3 +27,7 @@ Source for shader integration: https://github.com/DavidHDev/react-bits at 4dc7b5
 ## Original Cloud plus two-pass Dither — 2026-11-02
 
 Source: React Bits /backgrounds/dither live Customize UI and upstream Dither JSX/demo/presets pinned 4dc7b5b7772e1217c8fb8d2a7aa074302180e5b4. Retain the upstream license. Use a low-resolution wave field texture, followed by the original indexed/ordered dither shader; convert hex palette colors from sRGB to linear before shader input. Copy each page output immediately so the next page cannot overwrite it. Clock, trails, ripples and presets must be per-page. Restore Cloud by bypassing the GPU pass entirely. Evidence: browser rendered Classic/Blueprint/Ice/halftone without fallback, and 35 tests including migrations, preset Undo, per-mode Apply and finish dependency passed. Limits: no physical iPhone performance claim.
+
+## First-frame design gate — 2026-11-02
+
+Problem: initial render preceded saved-design loading and briefly displayed factory appearance. Keep a static HTML/CSS black visibility gate, skip animation rendering until validated settings arrive, then remove the gate after the first configured draw. Prefer the network's saved design; use confirmed local cache only after failure; never accept factory defaults as a saved record. Block preview actions during this load. Evidence: delayed two-second loopback read showed hidden/pending before data, visible/not-pending afterwards; async startup regression tests pass. This verifies the browser flow, not physical iPhone performance.

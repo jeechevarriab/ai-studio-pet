@@ -18,7 +18,7 @@ export const DESIGN_GROUPS=[
   color('cycle2','Cycle · sky','#8fcfff'),color('cycle3','Cycle · lavender','#b2a9ee'),color('cycle4','Cycle · rose','#f3a3b5'),color('cycle5','Cycle · lime','#b4f483')
  ]},
  {id:'dither',label:'Dither',description:'React Bits Dither. Select Dither in Color to preview these settings.',fields:[
-  choice('ditherPreset','Preset','classic',Object.keys(DITHER_PRESETS)),
+  choice('ditherPreset','Preset','classic',[...Object.keys(DITHER_PRESETS),'custom']),
   color('ditherWaveColor','Wave Color','#bcbcbc'),color('ditherBackground','Background','#120f17'),toggle('ditherTransparent','Transparent background',false),
   choice('ditherPalette','Palette','none',[...Object.keys(DITHER_PALETTES),'custom']),
   choice('ditherPattern','Dither Mode','bayer',['bayer','bayer4','bayer2','halftone','lines','crosshatch','noise','none']),
@@ -79,6 +79,10 @@ export function validateDesign(input){
  return result;
 }
 export const modeSetting=(design,mode,key)=>scopedSetting(key)?design.modeOverrides?.[mode]?.[key]??design[key]:design[key];
+export async function loadInitialDesign(readCloud,readCache){
+ try{return {settings:validateDesign(await readCloud()),source:'cloud'};}
+ catch{try{return {settings:validateDesign(readCache()),source:'cache'};}catch{throw Error('Your saved design could not load. Reload to try again.');}}
+}
 export const settingHistoryKey=(mode,key)=>(scopedSetting(key)?mode:'global')+'/'+key;
 export function resolveModeDesign(input,mode){const d=validateDesign(input);if(!DESIGN_MODES.includes(mode))throw Error('Invalid mode');return {...d,...d.modeOverrides[mode],modeOverrides:{}};}
 function writeModeSetting(input,mode,key,value){
@@ -87,15 +91,25 @@ function writeModeSetting(input,mode,key,value){
 }
 export function editModeValue(draft,history,mode,key,value){
  if(key==='ditherPreset'){
-  if(!Object.hasOwn(DITHER_PRESETS,value))throw Error('Invalid preset');
+  if(value!=='custom'&&!Object.hasOwn(DITHER_PRESETS,value))throw Error('Invalid preset');
   const h=settingHistoryKey(mode,key),snapshot=Object.fromEntries(DITHER_SETTING_KEYS.map(k=>[k,modeSetting(draft,mode,k)]));
-  let next=draft;for(const [k,v]of Object.entries(DITHER_PRESETS[value]))next=writeModeSetting(next,mode,k,v);
+  let next=draft;for(const [k,v]of Object.entries(DITHER_PRESETS[value]||{}))next=writeModeSetting(next,mode,k,v);
   next=writeModeSetting(next,mode,key,value);(history[h]||=[]).push(snapshot);return next;
  }
  const next=writeModeSetting(draft,mode,key,value),old=modeSetting(draft,mode,key),h=settingHistoryKey(mode,key);
  if(modeSetting(next,mode,key)!==old){(history[h]||=[]).push(old);if(history[h].length>50)history[h].shift();}return next;
 }
 export function undoModeValue(draft,history,mode,key){const stack=history[settingHistoryKey(mode,key)];if(!stack?.length)return draft;const old=stack.pop();if(key==='ditherPreset'&&typeof old==='object'){let next=draft;for(const [k,v]of Object.entries(old))next=writeModeSetting(next,mode,k,v);return next;}return writeModeSetting(draft,mode,key,old);}
+export function randomizeDither(draft,mode,random=Math.random){
+ const pick=values=>values[Math.min(values.length-1,Math.floor(random()*values.length))];
+ const range=(min,max,step)=>Number((min+Math.round(random()*(max-min)/step)*step).toFixed(4));
+ const snapshot=Object.fromEntries(['colorMode',...DITHER_SETTING_KEYS].map(key=>[key,modeSetting(draft,mode,key)]));
+ const palette=pick(['gameboy','amber','sepia','ice','blueprint']);
+ const changes={colorMode:'dither',ditherPreset:'custom',ditherPalette:palette,ditherPattern:pick(['bayer','bayer4','bayer2','halftone','lines','crosshatch','noise']),ditherPixelSize:pick([1,2,2,3,4]),ditherColors:pick([2,3,4,6,8]),ditherScale:range(.6,2.2,.05),ditherSpeed:range(.015,.1,.005),ditherFrequency:range(1.5,5,.1),ditherAmplitude:range(.15,.55,.01),ditherContrast:range(.8,1.6,.05),ditherBrightness:range(-.1,.15,.01),ditherMouseEffect:pick(['erase','reveal','ripple']),ditherMouseRadius:range(.15,.6,.01),ditherMouseStrength:range(.5,1.5,.05),ditherTrail:range(.1,.8,.05)};
+ let next=draft;for(const [key,value]of Object.entries(changes))next=writeModeSetting(next,mode,key,value);
+ return {draft:next,snapshot};
+}
+export function restoreDitherRandomization(draft,mode,snapshot){let next=draft;for(const key of ['colorMode',...DITHER_SETTING_KEYS])next=writeModeSetting(next,mode,key,snapshot[key]);return next;}
 export function designForModeApply(applied,draft,mode,key=null){if(key===null)return validateDesign(draft);let next=applied;if(key.startsWith('dither')&&modeSetting(draft,mode,'colorMode')==='dither')next=writeModeSetting(next,mode,'colorMode','dither');if(key==='ditherPreset'){for(const k of DITHER_SETTING_KEYS)next=writeModeSetting(next,mode,k,modeSetting(draft,mode,k));return next;}return writeModeSetting(next,mode,key,modeSetting(draft,mode,key));}
 export function reconcileSavedDesign(saved,before,after,selection=null){
  const includes=key=>!selection||(selection.keys||[selection.key]).includes(key);

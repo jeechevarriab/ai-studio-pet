@@ -10,6 +10,7 @@ const canvas = $('pet-canvas');
 const ctx = canvas.getContext('2d');
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 const mascotVersion = new URLSearchParams(location.search).get('mascot') === 'v1' ? 'v1' : 'v2';
+let designReady=mascotVersion==='v1';
 document.documentElement.classList.toggle('mascot-v2', mascotVersion === 'v2');
 let state = initialState(), definition, original, rules, activity, transition = null, pointer = null;
 let time = 0, lastTimestamp = 0, previousStatus = '';
@@ -25,7 +26,7 @@ let customDesign={...DESIGN_DEFAULTS};
 let sharedDesign={...DESIGN_DEFAULTS},modeDefinitions={};
 let studioReport=null,autoStudioWork=false;
 function restoreModeDesign(){customDesign=resolveModeDesign(sharedDesign,state.mode);definition=modeDefinitions[state.mode]||designDefinition(original,customDesign);state.expression=customDesign.expression.startsWith('touch-')?'auto':customDesign.expression;touchEye=customDesign.expression.startsWith('touch-')?Number(customDesign.expression.slice(6)):-1;previousEye=-1;}
-function setDesign(settings){sharedDesign=structuredClone(settings);modeDefinitions=Object.fromEntries(MODES.map(mode=>[mode,designDefinition(original,resolveModeDesign(settings,mode))]));restoreModeDesign();updateUI();}
+function setDesign(settings){sharedDesign=structuredClone(settings);modeDefinitions=Object.fromEntries(MODES.map(mode=>[mode,designDefinition(original,resolveModeDesign(settings,mode))]));restoreModeDesign();updateUI();designReady=true;}
 const modeColor = () => (definition.presentationV2?.modeColors || defaultModeColors)[state.mode];
 let surfData = null, surfPending = false;
 
@@ -184,6 +185,7 @@ function frame(timestamp) {
   const delta = lastTimestamp ? timestamp - lastTimestamp : 0;
   lastTimestamp = timestamp;
   if(document.hidden) {requestAnimationFrame(frame);return;}
+  if(!designReady){requestAnimationFrame(frame);return;}
   if (!document.hidden) time = stepTime(time, delta, state.paused, state.speed);
   const poseSmoothing = 1 - Math.exp(-Math.min(delta, 100) / 170);
   attention = reducedMotion.matches ? attentionTarget : attention + (attentionTarget - attention) * poseSmoothing;
@@ -206,6 +208,7 @@ function frame(timestamp) {
     ctx.save(); ctx.translate(410 * transition.direction - offset, 0);ctx.beginPath();ctx.rect(0,0,410,502);ctx.clip();render(activity); ctx.restore();
     if (progress === 1) transition = null;
   } else render(activity);
+  document.documentElement.classList.remove('design-pending');
   requestAnimationFrame(frame);
 }
 
@@ -315,7 +318,7 @@ try {
   definition = validateDefinitions(await characterResponse.json()); original = structuredClone(definition);
   rules = validateRules(await behaviorResponse.json());
   connect(); updateUI(); $('load-status').textContent = ''; requestAnimationFrame(frame);
-  if(mascotVersion==='v2')void connectDesignEditor({preview:setDesign,apply:setDesign,mode:value=>{changeMode(value);revealControls(false);}});
+  if(mascotVersion==='v2')void connectDesignEditor({preview:setDesign,apply:setDesign,mode:value=>{changeMode(value);revealControls(false);}}).then(result=>{if(!result.loaded)$('load-status').textContent=result.error;});
   if(mascotVersion==='v2')connectStudio({receive:report=>{
     studioReport=report;
     const active=report.online&&report.agents.some(a=>a.status==='working'||a.status==='attention');
