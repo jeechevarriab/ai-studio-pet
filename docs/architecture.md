@@ -1,5 +1,18 @@
 # Project architecture and boundaries
 
+## Current companion additions (owner authorized)
+
+The separate public Sites copy now serves /app and /customize. Forty-eight
+validated controls produce a draft, independent per-control undo history and a
+revision-checked owner-only cloud save in R2. Public clients read only confirmed
+settings. Sites supplies auth; no separate password/OAuth service was created.
+The private Windows relay reads fixed STUDIO status files and a public local
+health check, then sends a metadata-only projection of five roles to a dedicated
+status endpoint. The app follows working activity and displays normalized phase
+and elapsed time on WORK. No source percentages exist. These additions supersede
+the earlier proposal-only gateway and local-only browser descriptions below;
+the studio permission boundary and five agent conversations are unchanged.
+
 ## Confirmed project direction
 
 The owner's Phase 1 brief defines a vanilla HTML/CSS/JavaScript/Canvas simulator at 410 × 502 with LIVE, WORK, SURF and SLEEP modes. Structured expression definitions should later be implemented by a separate ESP-IDF/C renderer. Browser code is not firmware.

@@ -42,6 +42,17 @@ monospace characters .:+x*oO0#@ in the approved masks, with slow staggered
 crossfades. Preserve current eye size, expressions and gaze. Reduced motion and
 pause freeze the ASCII flow. The editable eye sheet contains SVG text.
 
+Owner authorized /customize as a watch-style companion editor with 48 controls,
+independent Undo and owner-only synced Apply. Sites identity/R2 store the shared
+design; never make writes anonymous or publish secrets. Current eye-character
+radius/sampling is shared across normal and long-press expressions to match PLAY.
+Owner also authorized read-only STUDIO status integration. The separate relay
+reads only the allowlisted native/dashboard status files and public local health,
+and sends five role/status/phase/timestamp projections via its own scoped key.
+Never forward raw stage text, prompts, tasks, threads, files, tool names or outputs.
+The hub and five conversations remain untouched. No startup task is installed.
+See docs/customization-and-studio.md; gateway/.local is private and ignored.
+
 For every visual or motion task, read and apply C:/Users/Chapito/.codex/skills/adobe-art-direction/SKILL.md and relevant references, as required by the owner. Establish hierarchy and composition before polishing; inspect playback and representative frames. Follow the supplied minimal dot-matrix aesthetic. Do not use Meta mascot assets.
 
 Verify official Muse licensing, upstream commit, board configuration and ESP-IDF requirements before importing/building. Do not represent Canvas as directly deployable firmware. Keep simulator inputs synthetic until a separately approved authenticated read-only gateway is verified. No live surf API, voice, or flashing in the first milestone.
