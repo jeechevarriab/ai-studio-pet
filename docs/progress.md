@@ -1,5 +1,13 @@
 # Progress — 2026-11-02
 
+## App-only launch view
+
+Added `/app` with black surround, centered device, favicon/home-screen icons,
+standalone manifest and offline shell caching. Existing playground and V1 are
+preserved. Browser and 16 automated checks passed; installation and offline
+relaunch remain untested. Loopback only; phone/public hosting not enabled.
+See app-launch.md for startup, usage and boundaries.
+
 ## Setup evidence
 
 - Read the referenced TAMAGOTCHI AGENT chat and the owner's pasted Phase 1 brief.

@@ -1,4 +1,13 @@
 @layer reset, base, layout, controls;
+/* Dedicated launch view; the original playground remains at /. */
+html.app-only, .app-only body {background:#000;color-scheme:dark;min-width:0}
+.app-only body {min-height:100svh;min-height:100dvh;overflow:hidden}
+.app-only .masthead,.app-only .intro,.app-only .controls,.app-only footer,
+.app-only .preview-heading,.app-only .gesture-hint,.app-only .preview-readout {display:none}
+.app-only main {max-width:none;margin:0;padding:0;min-height:100svh;min-height:100dvh;display:grid;place-items:center}
+.app-only .workspace {display:block;margin:0;width:min(410px,calc(100vw - 24px),calc((100dvh - 24px)*410/502))}
+.app-only .device {border:0;box-shadow:none;border-radius:36px;background:#000}
+.app-only .load-status:not(:empty) {position:fixed;bottom:12px;left:12px;right:12px;color:#c4d4ce}
 @layer reset { * {box-sizing:border-box} body,h1,h2,p {margin:0} button,input,select {font:inherit} button,summary,select {cursor:pointer} button {color:inherit} button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visible,.device:focus-visible {outline:3px solid #258069;outline-offset:4px} }
 @layer base {
   :root {font-family:Inter,"Segoe UI",Arial,sans-serif;color:#25352e;background:#eef0e9;font-synthesis:none;--ink:#25352e;--muted:#6d7a70;--line:#d6ddd1;--mono:"SFMono-Regular",Consolas,monospace}

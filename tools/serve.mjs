@@ -6,6 +6,14 @@ import {createSurfReader} from './surf.mjs';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const assets = new Map([
   ['/', ['simulator/index.html', 'text/html']],
+  ['/app', ['simulator/index.html', 'text/html']],
+  ['/app/', ['simulator/index.html', 'text/html']],
+  ['/manifest.webmanifest', ['simulator/manifest.webmanifest', 'application/manifest+json']],
+  ['/sw.js', ['simulator/sw.js', 'text/javascript']],
+  ['/simulator/app-view.js', ['simulator/app-view.js', 'text/javascript']],
+  ['/icons/mascot.svg', ['simulator/icons/mascot.svg', 'image/svg+xml']],
+  ['/icons/mascot-192.png', ['simulator/icons/mascot-192.png', 'image/png']],
+  ['/icons/mascot-512.png', ['simulator/icons/mascot-512.png', 'image/png']],
   ['/simulator/style.css', ['simulator/style.css', 'text/css']],
   ['/simulator/app.js', ['simulator/app.js', 'text/javascript']],
   ['/simulator/engine.js', ['simulator/engine.js', 'text/javascript']],
