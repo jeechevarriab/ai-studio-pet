@@ -1,5 +1,5 @@
 import {readFileSync,writeFileSync} from 'node:fs';
-import {eyeDots,eyeMarks} from '../simulator/renderer.js';
+import {eyeDots,asciiMarks} from '../simulator/renderer.js';
 const data=JSON.parse(readFileSync(new URL('../character/expressions.json',import.meta.url),'utf8'));
 const colors=data.presentationV2.homePalette;
 const parts=['<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="570" viewBox="0 0 1000 570">','<rect width="1000" height="570" fill="#eef0e9"/>','<text x="30" y="40" font-family="Arial,sans-serif" font-size="18" fill="#25352e">STUDIO MASCOT / TEN ORIGINAL EYE EXPRESSIONS</text>'];
@@ -11,9 +11,9 @@ data.touchEyes.forEach((e,i)=>{
   for(let side=0;side<2;side++)for(const [dx,dy] of eyeDots(e[side?'right':'left'],data.presentationV2.eyeSampling)){
     points.push([x+(side?126:54)+dx*3.3*size,y+96+dy*3.3*size]);
   }
-  for(const m of eyeMarks(points)){
-    const r=1.22*size*data.presentationV2.eyeDotMultiplier*[.84,.94,1][m.layer],s=r*.86,color=['#467b86','#2c5468','#09272b'][m.layer];
-    parts.push(m.type==='dot'?`<circle cx="${m.x}" cy="${m.y}" r="${r}" fill="${color}"/>`:`<path d="M${m.x-s},${m.y-s}l${s*2},${s*2} M${m.x-s},${m.y+s}l${s*2},${-s*2}" fill="none" stroke="${color}" stroke-width="${Math.max(.55,r*.49)}" stroke-linecap="round"/>`);
+  for(const m of asciiMarks(points,0,true)){
+    const r=1.22*size*data.presentationV2.eyeDotMultiplier,color=['#467b86','#2c5468','#09272b'][m.layer];
+    parts.push(`<text x="${m.x}" y="${m.y}" text-anchor="middle" dominant-baseline="central" font-family="Consolas,Menlo,monospace" font-size="${Math.max(4.5,r*2.85)}" font-weight="600" fill="${color}">${m.glyph}</text>`);
   }
   parts.push(`<text x="${x+90}" y="${y+194}" text-anchor="middle" font-family="Arial,sans-serif" font-size="13" fill="#b5c5ba">${String(i+1).padStart(2,'0')} / ${e.name}</text>`);
 });

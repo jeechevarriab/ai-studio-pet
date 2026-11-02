@@ -1,5 +1,17 @@
 # Progress — 2026-11-02
 
+## ASCII eye rendering
+
+V2 now renders actual monospace characters (.:+ x*o O0#@) instead of vector
+circles/crosses. The existing eye masks, footprint, palette, gaze, blinking,
+sleeping curves and happy pickup remain. Cells stay fixed to their expression;
+staggered 2.2-second character cycles blend over the last 22% of each cycle.
+Reduced motion and pause stop the symbol flow. The eye sheet now contains
+editable SVG text. No extra fonts or network dependencies were introduced.
+Twenty-one automated checks pass, including character validity, shape stability,
+character changes over time and reduced-motion invariance. Browser preview
+reviewed at phone size; physical iPhone performance remains unmeasured.
+
 ## Depth-guided color and lighting
 
 Owner supplied a depth-map reference. Implemented a procedural rounded depth

@@ -204,24 +204,30 @@ export function eyeMarks(points) {
     return {x,y,type,layer};
   });
 }
-function texturedDots(ctx, points, radius, eyes) {
+export function asciiMarks(points,time=0,still=false) {
+  const alphabets=['.:+','x*o','O0#@'];
+  return eyeMarks(points).map(mark=>{
+    const seed=Math.abs(Math.round(mark.x*7+mark.y*11));
+    const phase=(still?0:Math.max(0,time)/2200)+(seed%17)/17;
+    const step=Math.floor(phase),fraction=phase-step;
+    const chars=alphabets[mark.layer],index=(seed+step)%chars.length;
+    const u=still?0:Math.max(0,(fraction-.78)/.22);
+    return {...mark,glyph:chars[index],nextGlyph:chars[(index+1)%chars.length],blend:u*u*(3-2*u)};
+  });
+}
+function asciiEyes(ctx, points, radius, eyes, time, still) {
   const colors=eyes.layers||['#467b86','#2c5468',eyes.color];
-  const marks=eyeMarks(points);
+  const marks=asciiMarks(points,time,still);
   ctx.save();const alpha=ctx.globalAlpha;
-  if(eyes.luminous){ctx.shadowColor='#61dcff';ctx.shadowBlur=2;}
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.font=`600 ${Math.max(4.5,radius*2.85)}px ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace`;
+  if(eyes.luminous){ctx.shadowColor='#61dcff';ctx.shadowBlur=1;}
   for(let layer=0;layer<3;layer++) {
-    const r=radius*[.84,.94,1][layer];
-    ctx.globalAlpha=alpha*[.78,.92,1][layer];ctx.fillStyle=ctx.strokeStyle=colors[layer];
-    ctx.beginPath();
-    for(const m of marks)if(m.layer===layer&&m.type==='dot'){
-      ctx.moveTo(m.x+r,m.y);ctx.arc(m.x,m.y,r,0,TAU);
+    const opacity=alpha*[.78,.92,1][layer];ctx.fillStyle=colors[layer];
+    for(const m of marks)if(m.layer===layer){
+      ctx.globalAlpha=opacity*(1-m.blend);ctx.fillText(m.glyph,m.x,m.y);
+      if(m.blend>0){ctx.globalAlpha=opacity*m.blend;ctx.fillText(m.nextGlyph,m.x,m.y);}
     }
-    ctx.fill();ctx.beginPath();ctx.lineCap='round';ctx.lineWidth=Math.max(.55,radius*.49);
-    for(const m of marks)if(m.layer===layer&&m.type==='cross'){
-      const s=r*.86;ctx.moveTo(m.x-s,m.y-s);ctx.lineTo(m.x+s,m.y+s);
-      ctx.moveTo(m.x-s,m.y+s);ctx.lineTo(m.x+s,m.y-s);
-    }
-    ctx.stroke();
   }
   ctx.restore();
 }
@@ -245,7 +251,7 @@ function largeFace(ctx, definition, expression, time, scale, offsetY, reducedMot
       if (blink ? row === 3&&Math.abs(x)<.9 : on) points.push([205+(side?1:-1)*separation/2+(col-2)*spacing,offsetY+(row-3)*spacing]);
     }
   }
-  texturedDots(ctx,points,eyes.dotRadius*scale*size*dotSize,eyes);
+  asciiEyes(ctx,points,eyes.dotRadius*scale*size*dotSize,eyes,time,reducedMotion);
 }
 
 const eyeDotCache=new Map();
@@ -275,7 +281,7 @@ export function eyeDots(eye, density=1) {
   if(eyeDotCache.size>64)eyeDotCache.clear();eyeDotCache.set(key,dots);return dots;
 }
 
-function touchFace(ctx, definition, index, scale, y, opacity=1) {
+function touchFace(ctx, definition, index, scale, y, opacity=1, time=0, still=false) {
   const expression=definition.touchEyes?.[index]; if(!expression)return;
   const size=definition.presentationV2?.eyeSizeMultiplier||1.4;
   scale*=size;
@@ -283,7 +289,7 @@ function touchFace(ctx, definition, index, scale, y, opacity=1) {
   for(let side=0;side<2;side++) for(const [x,row] of eyeDots(expression[side?'right':'left'],definition.presentationV2?.eyeSampling||2)) {
     points.push([205+(side?1:-1)*56*(size/1.4)+x*4.1*scale,y+row*4.1*scale]);
   }
-  texturedDots(ctx,points,1.55*scale*(definition.eyes.dotRadius/2.2)*(definition.presentationV2?.eyeDotMultiplier||.6),definition.eyes);
+  asciiEyes(ctx,points,1.55*scale*(definition.eyes.dotRadius/2.2)*(definition.presentationV2?.eyeDotMultiplier||.6),definition.eyes,time,still);
   ctx.restore();
 }
 
@@ -341,9 +347,9 @@ export function renderSceneV2(ctx, {activity, definition, time = 0, reducedMotio
       ctx.save();ctx.globalAlpha=1-greeting;largeFace(ctx,paintedDefinition,e,t,presentation.task.eyeScale,faceY,reducedMotion);ctx.restore();
       ctx.save();ctx.globalAlpha=greeting;largeFace(ctx,paintedDefinition,definition.expressions.happy,t,presentation.task.eyeScale,faceY,reducedMotion);ctx.restore();
     } else if(touchEye>=0) {
-      if(previousEye>=0&&eyeBlend<1) touchFace(ctx,paintedDefinition,previousEye,presentation.task.eyeScale,faceY,1-eyeBlend);
+      if(previousEye>=0&&eyeBlend<1) touchFace(ctx,paintedDefinition,previousEye,presentation.task.eyeScale,faceY,1-eyeBlend,t,reducedMotion);
       if(previousEye<0&&eyeBlend<1) {ctx.save();ctx.globalAlpha=1-eyeBlend;largeFace(ctx,paintedDefinition,e,t,presentation.task.eyeScale,faceY,reducedMotion);ctx.restore();}
-      touchFace(ctx,paintedDefinition,touchEye,presentation.task.eyeScale,faceY,eyeBlend);
+      touchFace(ctx,paintedDefinition,touchEye,presentation.task.eyeScale,faceY,eyeBlend,t,reducedMotion);
     } else largeFace(ctx, paintedDefinition, e, t, presentation.task.eyeScale, faceY, reducedMotion);
   ctx.restore();
 }

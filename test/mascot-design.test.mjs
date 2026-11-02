@@ -1,9 +1,20 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {eyeDots,eyeMarks,homeColor,floatingBody,surfaceDepth,depthLighting} from '../simulator/renderer.js';
+import {eyeDots,eyeMarks,asciiMarks,homeColor,floatingBody,surfaceDepth,depthLighting} from '../simulator/renderer.js';
 import {validateDefinitions,createPickupDetector} from '../simulator/engine.js';
 const character=JSON.parse(readFileSync(new URL('../character/expressions.json',import.meta.url),'utf8'));
+
+test('ASCII animation keeps the eye silhouette fixed, uses printable characters and freezes in reduced motion',()=>{
+  const points=eyeDots(character.touchEyes[0].left,2).map(([x,y])=>[149+x*7,237+y*7]);
+  const before=asciiMarks(points,0),after=asciiMarks(points,5700);
+  assert.deepEqual(before.map(m=>[m.x,m.y]),points);
+  assert.deepEqual(after.map(m=>[m.x,m.y]),points);
+  assert.notDeepEqual(before.map(m=>m.glyph),after.map(m=>m.glyph));
+  assert(new Set(before.map(m=>m.glyph)).size>5);
+  for(const m of [...before,...after]){assert.match(m.glyph,/^[.:+x*oO0#@]$/);assert(m.blend>=0&&m.blend<=1);}
+  assert.deepEqual(asciiMarks(points,0,true),asciiMarks(points,5700,true));
+});
 
 test('depth recedes from the forward surface and tilt moves light opposite its shadow',()=>{
   assert.equal(surfaceDepth(205,249),1);
