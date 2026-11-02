@@ -31,3 +31,7 @@ Source: React Bits /backgrounds/dither live Customize UI and upstream Dither JSX
 ## First-frame design gate — 2026-11-02
 
 Problem: initial render preceded saved-design loading and briefly displayed factory appearance. Keep a static HTML/CSS black visibility gate, skip animation rendering until validated settings arrive, then remove the gate after the first configured draw. Prefer the network's saved design; use confirmed local cache only after failure; never accept factory defaults as a saved record. Block preview actions during this load. Evidence: delayed two-second loopback read showed hidden/pending before data, visible/not-pending afterwards; async startup regression tests pass. This verifies the browser flow, not physical iPhone performance.
+
+## Fixed approved restore point — 2026-11-02
+
+For Return to Default, capture a validated confirmed design before publishing the randomizer. Store an explicit versioned design-only restore point rather than reading the latest random state or reverting to factory defaults. Restore and Apply only the selected mode's scoped fields and its named colors/eye color; retain unrelated drafts and other modes. Evidence: cloud-default.test.mjs and browser Randomize/Return-to-Default check passed as part of 41 tests. Scope: original Cloud design revision 101, not a general design history service.

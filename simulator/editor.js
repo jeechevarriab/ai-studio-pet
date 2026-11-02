@@ -1,4 +1,4 @@
-import {DESIGN_GROUPS,DESIGN_DEFAULTS,DITHER_SETTING_KEYS,validateDesign,editModeValue,undoModeValue,designForModeApply,modeSetting,settingHistoryKey,reconcileSavedDesign,randomizeDither,restoreDitherRandomization,loadInitialDesign} from './design.js';
+import {DESIGN_GROUPS,DESIGN_DEFAULTS,DITHER_SETTING_KEYS,validateDesign,editModeValue,undoModeValue,designForModeApply,modeSetting,settingHistoryKey,reconcileSavedDesign,randomizeDither,restoreDitherRandomization,loadInitialDesign,cloudSettingKeys,randomizeCloud,restoreCloudRandomization,defaultSettingKeys,restoreCloudDefault} from './design.js';
 export async function connectDesignEditor({preview,apply,mode}){
  const editing=location.pathname==='/customize';
  let selectedMode='live';
@@ -9,7 +9,7 @@ export async function connectDesignEditor({preview,apply,mode}){
  const notify=message=>{status.textContent=message;};
  const button=(label,action,cls='')=>{const b=document.createElement('button');b.type='button';b.textContent=label;b.className=cls;b.addEventListener('click',action);return b;};
  const controls=new Map(),outputs=new Map(),undos=new Map(),applies=new Map(),rows=new Map();
- let accessNotice=null,modeHint=null,randomButton=null,undoRandomButton=null,applyRandomButton=null,randomHistory={};
+ let accessNotice=null,modeHint=null,randomButton=null,undoRandomButton=null,applyRandomButton=null,randomHistory={},cloudRandomButton=null,cloudUndoButton=null,cloudApplyButton=null,cloudHistory={},defaultDesign=null,defaultButton=null,defaultPending={};
  const refresh=()=>{
   if(modeHint)modeHint.textContent=({live:'LIVE',work:'WORK',surf:'PLAY',sleep:'SLEEP'})[selectedMode]+' settings · Eyes, finish, shape and motion save separately for each mode.';
   for(const group of DESIGN_GROUPS)for(const f of group.fields){const input=controls.get(f.key);if(!input)continue;
@@ -23,6 +23,11 @@ export async function connectDesignEditor({preview,apply,mode}){
   }
   if(saveButton)saveButton.disabled=loading||saving||!owner;
   if(randomButton)randomButton.disabled=loading||saving;
+  if(cloudRandomButton)cloudRandomButton.disabled=loading||saving;
+  if(cloudUndoButton)cloudUndoButton.disabled=loading||saving||!cloudHistory[selectedMode]?.length;
+  if(cloudApplyButton)cloudApplyButton.disabled=loading||saving||!owner||!(defaultPending[selectedMode]?defaultSettingKeys(selectedMode):cloudSettingKeys(selectedMode)).some(key=>fieldValue(draft,key)!==fieldValue(applied,key));
+  if(cloudApplyButton)cloudApplyButton.textContent=defaultPending[selectedMode]?'Apply default':'Apply Cloud look';
+  if(defaultButton)defaultButton.disabled=loading||saving||!defaultDesign;
   if(undoRandomButton)undoRandomButton.disabled=loading||saving||!randomHistory[selectedMode]?.length;
   if(applyRandomButton)applyRandomButton.disabled=loading||saving||!owner||!['colorMode',...DITHER_SETTING_KEYS].some(key=>fieldValue(draft,key)!==fieldValue(applied,key));
  };
@@ -30,12 +35,12 @@ export async function connectDesignEditor({preview,apply,mode}){
  async function saveDesign(key=null){
   if(saving||!owner||loading)return;
   const submitted=designForModeApply(applied,draft,selectedMode,key),draftAtSubmit=structuredClone(draft);
-  const selection=key===null?null:{mode:selectedMode,key,keys:[...(key.startsWith('dither')&&fieldValue(draft,'colorMode')==='dither'?['colorMode']:[]),...(key==='ditherPreset'?DITHER_SETTING_KEYS:[key])]};
+  const selection=key===null?null:{mode:selectedMode,key,keys:key==='modeDefault'?defaultSettingKeys(selectedMode):key==='cloudLook'?cloudSettingKeys(selectedMode):[...(key.startsWith('dither')&&fieldValue(draft,'colorMode')==='dither'?['colorMode']:[]),...(key==='ditherPreset'?DITHER_SETTING_KEYS:[key])]};
   saving=true;refresh();notify('Saving '+(key?'this setting':'your design')+'…');
   try{
    const response=await fetch('/api/design',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({settings:submitted,revision})});
    const body=await response.json();if(!response.ok)throw Error(body.error||'Could not save. Your preview is still here.');
-   revision=body.revision;applied=validateDesign(body.settings);
+   revision=body.revision;applied=validateDesign(body.settings);if(key==='modeDefault')defaultPending[selection.mode]=false;else if(key===null)defaultPending={};
    // Keep unrelated drafts and edits made while the save was in flight.
    draft=reconcileSavedDesign(applied,draftAtSubmit,draft,selection);
    try{localStorage.setItem('mascot-confirmed-design',JSON.stringify({settings:applied,revision}));}catch{}
@@ -62,6 +67,14 @@ export async function connectDesignEditor({preview,apply,mode}){
    const section=document.createElement('section');section.className='editor-group';section.id='edit-'+group.id;section.hidden=group.id!=='colors';
    const tab=button(group.label,()=>{shell.querySelectorAll('.editor-group').forEach(s=>s.hidden=s!==section);tabs.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b===tab));});tab.setAttribute('aria-pressed',group.id==='colors');tabs.append(tab);
    const heading=document.createElement('h2');heading.textContent=group.label;const description=document.createElement('p');description.className='editor-description';description.textContent=group.description;section.append(heading,description);
+   if(group.id==='colors'){
+    const actions=document.createElement('div');actions.className='dither-random-actions';
+    cloudRandomButton=button('Randomize Cloud',()=>{const result=randomizeCloud(draft,selectedMode);const stack=cloudHistory[selectedMode]||=[];stack.push(result.snapshot);if(stack.length>50)stack.shift();draft=result.draft;preview(draft);refresh();notify('Random Cloud look previewed for this mode. Apply Cloud look to save.');});
+    cloudUndoButton=button('Undo Cloud randomize',()=>{const previous=cloudHistory[selectedMode]?.pop();if(previous){draft=restoreCloudRandomization(draft,selectedMode,previous);preview(draft);refresh();notify('Previous Cloud look restored. Apply to save.');}});
+    cloudApplyButton=button('Apply Cloud look',()=>void saveDesign(defaultPending[selectedMode]?'modeDefault':'cloudLook'));
+    defaultButton=button('Return to Default',()=>{if(!defaultDesign)return;draft=restoreCloudDefault(draft,selectedMode,defaultDesign);defaultPending[selectedMode]=true;preview(draft);refresh();notify('Your saved Cloud Original design is previewed for this mode. Apply default to save, or Discard changes to cancel.');});
+    actions.append(cloudRandomButton,cloudUndoButton,cloudApplyButton,defaultButton);section.append(actions);
+   }
    if(group.id==='dither'){
     const actions=document.createElement('div');actions.className='dither-random-actions';
     randomButton=button('Randomize Dither',()=>{const result=randomizeDither(draft,selectedMode);const stack=randomHistory[selectedMode]||=[];stack.push(result.snapshot);if(stack.length>50)stack.shift();draft=result.draft;preview(draft);refresh();notify('Random Dither look previewed for this mode. Apply Dither look to save.');});
@@ -88,9 +101,10 @@ export async function connectDesignEditor({preview,apply,mode}){
    }shell.append(section);
   }
   const footer=document.createElement('footer');footer.className='editor-actions';
-  const discard=button('Discard changes',()=>{if(loading)return;draft={...applied};history={};randomHistory={};preview(draft);refresh();notify('Back to your saved design.');});
+  const discard=button('Discard changes',()=>{if(loading)return;draft={...applied};history={};randomHistory={};cloudHistory={};defaultPending={};preview(draft);refresh();notify('Back to your saved design.');});
   saveButton=button('Apply & save',()=>void saveDesign(),'editor-apply');footer.append(discard,saveButton);shell.append(status,footer);document.body.append(shell);
   notify('Loading your saved design…');refresh();
+  void fetch('/character/cloud-default-design.json',{cache:'no-store'}).then(response=>{if(!response.ok)throw Error('Restore point unavailable');return response.json();}).then(data=>{defaultDesign=validateDesign(data.settings);refresh();}).catch(()=>{if(defaultButton)defaultButton.title='Saved restore point could not load. Reload to try again.';});
  }
  const refreshSaved=async()=>{
   const response=await fetch('/api/design',{cache:'no-store',signal:AbortSignal.timeout(12000)});if(!response.ok)throw Error('Cloud design unavailable');const data=await response.json();applied=validateDesign(data.settings);revision=data.revision;try{localStorage.setItem('mascot-confirmed-design',JSON.stringify({settings:applied,revision}));}catch{}return applied;

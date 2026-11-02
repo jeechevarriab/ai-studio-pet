@@ -110,7 +110,20 @@ export function randomizeDither(draft,mode,random=Math.random){
  return {draft:next,snapshot};
 }
 export function restoreDitherRandomization(draft,mode,snapshot){let next=draft;for(const key of ['colorMode',...DITHER_SETTING_KEYS])next=writeModeSetting(next,mode,key,snapshot[key]);return next;}
-export function designForModeApply(applied,draft,mode,key=null){if(key===null)return validateDesign(draft);let next=applied;if(key.startsWith('dither')&&modeSetting(draft,mode,'colorMode')==='dither')next=writeModeSetting(next,mode,'colorMode','dither');if(key==='ditherPreset'){for(const k of DITHER_SETTING_KEYS)next=writeModeSetting(next,mode,k,modeSetting(draft,mode,k));return next;}return writeModeSetting(next,mode,key,modeSetting(draft,mode,key));}
+export const cloudSettingKeys=mode=>['colorMode','saturation',mode+'Color',mode+'Background','bodyWidth','bodyHeight','roundness','diffusion','texture','depth','light','brightness','lightTravel','liquid','float',...(mode==='live'?['cycle2','cycle3','cycle4','cycle5','cycleSeconds']:[])];
+export const defaultSettingKeys=mode=>DESIGN_FIELDS.filter(f=>scopedSetting(f.key)||[mode+'Color',mode+'Background',mode+'Eye'].includes(f.key)).map(f=>f.key);
+export function restoreCloudDefault(draft,mode,baseline){const saved=resolveModeDesign(baseline,mode);let next=draft;for(const key of defaultSettingKeys(mode))next=writeModeSetting(next,mode,key,key==='colorMode'?'cloud':saved[key]);return next;}
+export function randomizeCloud(draft,mode,random=Math.random){
+ const pick=values=>values[Math.min(values.length-1,Math.floor(random()*values.length))];
+ const range=(min,max,step)=>Number((min+Math.round(random()*(max-min)/step)*step).toFixed(3));
+ const palettes=[['#6ce8d1','#89c7fb','#a6a0ee','#e7a6c9','#b7e4b5'],['#f09b9f','#e8b598','#caa6ed','#8bbfdc','#b4e0d2'],['#91a6fa','#b7a0eb','#efb0d7','#87d5d8','#a1daba'],['#f3bd79','#e89eae','#c9a4e8','#8fc6e1','#9bdac7']];
+ const palette=pick(palettes),body=pick(palette),snapshot=Object.fromEntries(cloudSettingKeys(mode).map(key=>[key,modeSetting(draft,mode,key)]));
+ const changes={colorMode:'cloud',saturation:range(105,145,5),[mode+'Color']:mode==='surf'?pick(['#01070b','#02060e','#080512']):body,[mode+'Background']:mode==='work'?pick(['#f2efed','#f5efe8','#efedf4']):mode==='surf'?pick(['#078fe3','#107ec4','#4164bf']):pick(['#050909','#070913','#100a14','#070f10']),bodyWidth:range(305,355,5),bodyHeight:range(275,325,5),roundness:range(100,140,5),diffusion:range(12,22,1),texture:range(.6,1.3,.1),depth:range(.6,1.3,.1),light:range(.7,1.3,.1),brightness:range(.85,1.15,.05),lightTravel:range(.5,1.2,.1),liquid:range(.5,1.2,.1),float:range(.5,1.2,.1)};
+ if(mode==='live')Object.assign(changes,{cycle2:palette[1],cycle3:palette[2],cycle4:palette[3],cycle5:palette[4],cycleSeconds:range(180,420,10)});
+ let next=draft;for(const [key,value]of Object.entries(changes))next=writeModeSetting(next,mode,key,value);return {draft:next,snapshot};
+}
+export function restoreCloudRandomization(draft,mode,snapshot){let next=draft;for(const key of cloudSettingKeys(mode))next=writeModeSetting(next,mode,key,snapshot[key]);return next;}
+export function designForModeApply(applied,draft,mode,key=null){if(key===null)return validateDesign(draft);let next=applied;if(key==='cloudLook'||key==='modeDefault'){for(const k of key==='modeDefault'?defaultSettingKeys(mode):cloudSettingKeys(mode))next=writeModeSetting(next,mode,k,modeSetting(draft,mode,k));return next;}if(key.startsWith('dither')&&modeSetting(draft,mode,'colorMode')==='dither')next=writeModeSetting(next,mode,'colorMode','dither');if(key==='ditherPreset'){for(const k of DITHER_SETTING_KEYS)next=writeModeSetting(next,mode,k,modeSetting(draft,mode,k));return next;}return writeModeSetting(next,mode,key,modeSetting(draft,mode,key));}
 export function reconcileSavedDesign(saved,before,after,selection=null){
  const includes=key=>!selection||(selection.keys||[selection.key]).includes(key);
  const result=structuredClone(after);

@@ -5,6 +5,7 @@ import path from 'node:path';
 import {createSurfReader} from './surf.mjs';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const assets = new Map([
+  ['/character/cloud-default-design.json', ['character/cloud-default-design.json', 'application/json']],
   ['/simulator/color-finishes.js', ['simulator/color-finishes.js', 'text/javascript']],
   ['/simulator/react-bits-shaders.js', ['simulator/react-bits-shaders.js', 'text/javascript']],
   ['/third-party/react-bits/LICENSE.md', ['third-party/react-bits/LICENSE.md', 'text/plain']],
