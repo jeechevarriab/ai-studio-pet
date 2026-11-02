@@ -1,0 +1,19 @@
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets*.json
+credentials*.json
+wifi*.json
+.local/
+# Build and runtime output
+node_modules/
+build/
+dist/
+sdkconfig
+sdkconfig.old
+managed_components/
+__pycache__/
+*.log

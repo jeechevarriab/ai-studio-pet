@@ -1,0 +1,18 @@
+{
+  "repository": "https://github.com/facebookincubator/muse-gadget-sdk.git",
+  "commit": "1b894f551e64416e2844452ec6056ec56d6a10f1",
+  "submodulePath": "firmware/muse-gadget-sdk",
+  "inspectedAt": "2026-11-02",
+  "boardAlias": "s3-206",
+  "boardProfile": "waveshare-s3-206",
+  "target": "esp32s3",
+  "recommendedEspIdf": "6.0.1",
+  "boardNotesTestedEspIdf": "6.1",
+  "lvgl": "9.5.0",
+  "waveshareBsp": "2.0.0",
+  "resolution": [410, 502],
+  "sourceVerified": true,
+  "firmwareBuildVerified": false,
+  "hardwareVerifiedByThisProject": false,
+  "dependencyResolutionLocked": false
+}

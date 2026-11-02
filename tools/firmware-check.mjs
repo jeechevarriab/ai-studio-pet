@@ -1,0 +1,15 @@
+import {readFileSync, existsSync} from 'node:fs';
+import {execFileSync, spawnSync} from 'node:child_process';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
+const root = fileURLToPath(new URL('../', import.meta.url));
+const lock = JSON.parse(readFileSync(path.join(root, 'firmware/upstream-lock.json'), 'utf8'));
+const upstream = path.join(root, lock.submodulePath);
+const commit = execFileSync('git', ['-C', upstream, 'rev-parse', 'HEAD'], {encoding: 'utf8'}).trim();
+if (commit !== lock.commit) throw Error('Muse checkout does not match the committed source pin');
+if (execFileSync('git', ['-C', upstream, 'status', '--porcelain'], {encoding: 'utf8'}).trim()) throw Error('Upstream checkout has local modifications');
+for (const file of ['LICENSE', 'esp32/README.md', 'esp32/AGENTS.md', 'esp32/devices/waveshare-s3-206.md', 'esp32/devices/sdkconfig.muse-waveshare-s3-206']) if (!existsSync(path.join(upstream, file))) throw Error('Missing upstream baseline file: ' + file);
+const idf = spawnSync('idf.py', ['--version'], {encoding: 'utf8', timeout: 15000});
+const available = idf.status === 0;
+console.log(JSON.stringify({sourcePin: commit,sourceUnmodified: true,board: lock.boardAlias,documentedEspIdf: lock.recommendedEspIdf,idfAvailable: available,...(available ? {idfVersionOutput: idf.stdout.trim()} : {buildStatus: 'BLOCKED: ESP-IDF is not activated in this shell; no installation or build attempted.'}),compiledByThisCheck: false}, null, 2));
+if (process.argv.includes('--require-toolchain') && (!available || !idf.stdout.includes('v' + lock.recommendedEspIdf))) process.exitCode = 1;

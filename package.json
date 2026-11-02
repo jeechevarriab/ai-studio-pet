@@ -1,0 +1,13 @@
+{
+  "name": "ai-studio-pet",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Local-first AI STUDIO PET simulator and pinned Muse firmware source",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "start": "node tools/serve.mjs",
+    "test": "node --test test/*.test.mjs",
+    "check": "node tools/check.mjs"
+  }
+}

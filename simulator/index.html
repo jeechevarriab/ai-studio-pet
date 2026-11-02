@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="AI STUDIO PET — a local, interactive companion simulator at 410 × 502.">
+  <title>AI STUDIO PET · Simulator</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='2' y='4' width='28' height='24' rx='10' fill='%2366f4d5'/%3E%3Cpath d='M11 12v7m10-7v7' stroke='%2309272b' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/simulator/style.css">
+  <script type="module" src="/simulator/app.js"></script>
+</head>
+<body>
+  <header class="masthead">
+    <a class="brand" href="/" aria-label="AI Studio Pet home"><span class="brand-mark" aria-hidden="true">••</span> AI STUDIO <span class="brand-pet">PET</span></a>
+    <span class="version"><span class="status-dot"></span> SIMULATOR <span class="version-number">/ 0.1</span></span>
+  </header>
+  <main>
+    <section class="intro"><p class="eyebrow">A LITTLE COMPANION. A LIVING STUDIO.</p><h1>Small presence.<br><span>Big personality.</span></h1><p class="intro-copy">A quiet window into your studio’s world.<br>Shape its mood. See what comes alive.</p></section>
+    <div class="workspace">
+      <section class="preview" aria-label="Device simulator">
+        <div class="preview-heading"><span>YOUR COMPANION</span><span>410 × 502</span></div>
+        <div class="device" id="device" tabindex="0" aria-label="Pet touchscreen. Swipe horizontally or use arrow keys to change mode.">
+          <canvas width="410" height="502" id="pet-canvas" aria-label="Animated custom dot-matrix pet"></canvas>
+          <div class="device-header"><span class="device-label">AI STUDIO PET</span><span id="device-clock">12:00</span></div>
+          <div class="mode-title"><span class="tiny-dot" id="mood-dot"></span><span id="activity-label">Just being</span></div>
+          <div class="device-bottom"><p id="caption">A quiet moment. A world of possibilities.</p><nav class="mode-nav" aria-label="Pet mode"><button data-mode="live" aria-pressed="true">LIVE</button><button data-mode="work" aria-pressed="false">WORK</button><button data-mode="surf" aria-pressed="false">SURF</button><button data-mode="sleep" aria-pressed="false">SLEEP</button></nav></div>
+        </div>
+        <p class="gesture-hint"><span aria-hidden="true">↔</span> Swipe to explore <span class="hint-divider">·</span> Arrow keys work too</p>
+        <div class="preview-readout"><span><span class="status-dot"></span> <span id="expression-readout">IDLE</span></span><span id="scene-readout">LIVE WORLD</span></div>
+      </section>
+
+      <aside class="controls" aria-label="Simulation controls">
+        <div class="panel-heading"><div><p class="eyebrow">THE PLAYGROUND</p><h2>Make a little moment.</h2></div><button class="icon-button" id="reset" aria-label="Reset simulation" title="Reset simulation">↺</button></div>
+        <fieldset class="control-section"><legend><span class="section-number">01</span> EXPRESSION</legend><p class="control-description">Let the world decide, or choose a mood.</p><div class="expression-buttons" id="expressions"><button data-expression="auto" aria-pressed="true">Auto</button><button data-expression="idle" aria-pressed="false">Idle</button><button data-expression="happy" aria-pressed="false">Happy</button><button data-expression="focused" aria-pressed="false">Focused</button><button data-expression="sleeping" aria-pressed="false">Sleeping</button></div></fieldset>
+
+        <fieldset class="control-section"><legend><span class="section-number">02</span> LIVING WORLD</legend><div class="label-row"><label for="hour">Time of day</label><output id="hour-output" for="hour">12:00</output></div><input id="hour" type="range" min="0" max="23" value="12"><div class="range-labels"><span>Midnight</span><span>Noon</span><span>Night</span></div><div class="two-columns"><div><label for="weather">Weather</label><select id="weather"><option value="clear">Clear skies</option><option value="rain">Soft rain</option></select></div><div><label for="surf">Surf conditions</label><select id="surf"><option value="1">Flat · 1 ft</option><option value="2" selected>Gentle · 2 ft</option><option value="4">Playful · 4 ft</option><option value="6">Pumping · 6 ft</option></select></div></div></fieldset>
+
+        <fieldset class="control-section"><legend><span class="section-number">03</span> STUDIO PULSE <span class="sim-badge">SIMULATED</span></legend><div class="two-columns"><div><label for="agent">Agent</label><select id="agent"><option>Manager</option><option>IT</option><option>Design</option><option>Animation</option><option selected>Web &amp; Coding</option></select></div><div><label for="agent-status">Status</label><select id="agent-status"><option value="idle">Standing by</option><option value="working">Working</option></select></div></div><div class="event-buttons"><button id="success">↗ Task complete</button><button id="failure">↻ Try again</button><button id="clear-event" aria-label="Clear simulated task event">Clear</button></div><p id="event-status" class="event-status" role="status">No event · no live studio connection</p></fieldset>
+
+        <div class="playback"><button id="pause" aria-pressed="false"><span aria-hidden="true">Ⅱ</span> Pause motion</button><label for="speed" class="sr-only">Animation speed</label><select id="speed"><option value="0.5">0.5× speed</option><option value="1" selected>1× speed</option><option value="2">2× speed</option></select></div>
+        <details class="tuning"><summary>Character tuning <span aria-hidden="true">+</span></summary><div class="tuning-controls"><label for="color">Expression color <input type="color" id="color" value="#66f4d5"></label><label for="dot-radius">Eye dot size <input type="range" id="dot-radius" min="1" max="3.5" step="0.1" value="2.2"></label><label for="float">Float distance <input type="range" id="float" min="0" max="15" value="5"></label><button id="export">Export character JSON ↓</button></div></details>
+      </aside>
+    </div>
+    <p class="load-status" id="load-status" role="status">Loading your companion…</p>
+    <p class="sr-only" id="screen-status" role="status" aria-live="polite"></p>
+  </main>
+  <footer><span>MADE TO FEEL A LITTLE MORE ALIVE.</span><span>LOCAL PREVIEW <span aria-hidden="true">↗</span></span></footer>
+</body>
+</html>

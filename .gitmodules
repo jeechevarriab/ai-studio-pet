@@ -1,0 +1,3 @@
+[submodule "firmware/muse-gadget-sdk"]
+	path = firmware/muse-gadget-sdk
+	url = https://github.com/facebookincubator/muse-gadget-sdk.git

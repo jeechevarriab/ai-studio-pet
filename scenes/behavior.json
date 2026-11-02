@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "sleepBeforeHour": 7,
+  "sleepFromHour": 22,
+  "surfThreshold": 3,
+  "rules": ["sleep", "failure", "working", "success", "rain", "surf", "idle"]
+}
