@@ -29,7 +29,7 @@ function environment(ctx, scene, time, color, amount) {
   ctx.restore();
 }
 
-export function renderScene(ctx, {activity, definition, time = 0, reducedMotion = false, surf = 2}) {
+export function renderSceneV1(ctx, {activity, definition, time = 0, reducedMotion = false, surf = 2}) {
   const e = definition.expressions[activity.expression];
   const t = reducedMotion ? 0 : time;
   const breath = Math.sin(t / e.periodMs * TAU);
@@ -89,4 +89,149 @@ export function renderScene(ctx, {activity, definition, time = 0, reducedMotion 
     ctx.globalAlpha = 1; ctx.fillStyle = '#263c44';
     rounded(ctx, -74, 39, 148, 5, 2); ctx.fill(); ctx.restore();
   }
+}
+
+// V2 is a presentation change only. The V1 renderer above is preserved verbatim
+// apart from its export name; behavior, controls and expression data stay shared.
+let floatingCache = null;
+const defaultPresentationV2 = {modeColors: {live: '#66f4d5', work: '#8fcfff', surf: '#b4f483', sleep: '#b2a9ee'}, idle: {eyeScale: 1.65}, task: {width: 338, height: 300, radius: 112, feather: 13, eyeScale: 1.35}};
+
+function floatingBody(definition, color, time) {
+  const {width, height, radius, feather} = (definition.presentationV2 || defaultPresentationV2).task;
+  const radii = [Math.sin(time/3100),Math.cos(time/4100),Math.sin(time/3700+2),Math.cos(time/4500+1)].map(v=>Math.round((radius+v*3)*4)/4);
+  const key = [width, height, radii, feather, color, definition.body.shadowColor].join(':');
+  if (floatingCache?.key === key) return floatingCache.canvas;
+  if(floatingCache && performance.now()-floatingCache.updatedAt<100) return floatingCache.canvas;
+  const canvas = floatingCache?.canvas || new OffscreenCanvas(410, 502);
+  const c = canvas.getContext('2d');
+  c.setTransform(1,0,0,1,0,0); c.globalAlpha=1; c.globalCompositeOperation='source-over'; c.filter='none'; c.clearRect(0,0,410,502);
+  c.filter = `blur(${feather}px)`;
+  c.fillStyle = '#fff';
+  rounded(c, 205 - width / 2, 249 - height / 2, width, height, radii); c.fill();
+  c.filter = 'none'; c.globalCompositeOperation = 'source-in';
+  const gradient = c.createLinearGradient(72, 103, 282, 410);
+  gradient.addColorStop(0, '#e6fff8');
+  gradient.addColorStop(.21, color);
+  gradient.addColorStop(.49, color + 'ed');
+  gradient.addColorStop(.76, color + '5c');
+  gradient.addColorStop(1, color + '00');
+  c.fillStyle = gradient; c.fillRect(0, 0, 410, 502);
+  c.globalCompositeOperation = 'source-atop';
+  const shade = c.createRadialGradient(288, 361, 0, 288, 361, 260);
+  shade.addColorStop(0, definition.body.shadowColor + 'bd');
+  shade.addColorStop(1, definition.body.shadowColor + '00');
+  c.fillStyle = shade; c.fillRect(0, 0, 410, 502);
+  c.fillStyle = '#07292d';
+  for (let y = 104; y < 425; y += 6) for (let x = 25; x < 389; x += 6) {
+    c.globalAlpha = Math.min(.17, Math.max(0, (y - 170) / 1200));
+    dot(c, x, y, .85);
+  }
+  floatingCache = {key, canvas, updatedAt:performance.now()};
+  return canvas;
+}
+
+function largeFace(ctx, definition, expression, time, scale, offsetY, reducedMotion) {
+  const eyes = definition.eyes;
+  const size=definition.presentationV2?.eyeSizeMultiplier||1.4;
+  const blink = !reducedMotion && expression.blinkMs > 0 && time % 5100 > 5100 - expression.blinkMs;
+  const separation = eyes.separation * scale * 1.18;
+  const spacing = eyes.spacing * scale * size;
+  ctx.fillStyle = eyes.color;
+  for (let side = 0; side < 2; side++) {
+    const matrix = expression[side ? 'right' : 'left'];
+    for (let row = 0; row < 7; row++) for (let col = 0; col < 5; col++) {
+      if (blink ? row === 3 : matrix[row][col] === '1') dot(ctx, 205 + (side ? 1 : -1) * separation / 2 + (col - 2) * spacing, offsetY + (row - 3) * spacing, eyes.dotRadius * scale * size);
+    }
+  }
+}
+
+export function eyeDots(eye) {
+  const dots = [];
+  for(let row=0;row<11;row++) for(let col=0;col<13;col++) {
+    const px=(col-6)/6, py=(row-5)/5;
+    const a=eye.tilt||0, x=px*Math.cos(a)+py*Math.sin(a), y=-px*Math.sin(a)+py*Math.cos(a);
+    const pupil=((x-(eye.pupilX||0))/.3)**2+((y-(eye.pupilY||0))/.5)**2<1;
+    const ellipse=x*x+(y/.88)**2<1;
+    let on=false;
+    switch(eye.shape) {
+      case 'orbit': on=ellipse&&!pupil; break;
+      case 'crescent': on=ellipse&&((x+.25)**2+((y-.05)/.84)**2>.67);break;
+      case 'arc': on=Math.abs(y-(-.35+.8*x*x))<.2&&Math.abs(x)<.95;break;
+      case 'drop': on=x*x+(y+.14*x*x)**2<.87-.18*y&&!pupil;break;
+      case 'prism': on=Math.abs(x)+Math.abs(y)*.86<.98&&Math.abs(x)+Math.abs(y)*.7>.38;break;
+      case 'ribbon': on=Math.abs(y-.3*Math.sin(x*2.8))<.2&&Math.abs(x)<.95;break;
+      case 'intent': on=ellipse&&y>-.45+.35*x&&!pupil;break;
+      case 'squint': on=Math.abs(y-.18*x)<.2&&Math.abs(x)<.9;break;
+      case 'sleepy': on=y>.05+.35*x*x&&y<.4+.35*x*x&&Math.abs(x)<.95;break;
+      case 'starlit': on=Math.abs(x)*Math.abs(y)<.14&&Math.max(Math.abs(x),Math.abs(y))<.9;break;
+    }
+    if(on)dots.push([col-6,row-5]);
+  }
+  return dots;
+}
+
+function touchFace(ctx, definition, index, scale, y, opacity=1) {
+  const expression=definition.touchEyes?.[index]; if(!expression)return;
+  scale*=definition.presentationV2?.eyeSizeMultiplier||1.4;
+  ctx.save();ctx.fillStyle=definition.eyes.color;ctx.globalAlpha=opacity;
+  for(let side=0;side<2;side++) for(const [x,row] of eyeDots(expression[side?'right':'left'])) {
+    dot(ctx,205+(side?1:-1)*56+x*4.1*scale,y+row*4.1*scale,1.55*scale*(definition.eyes.dotRadius/2.2));
+  }
+  ctx.restore();
+}
+
+function mixColor(a,b,amount) {
+  const rgb = color=>[1,3,5].map(i=>parseInt(color.slice(i,i+2),16));
+  const left=rgb(a),right=rgb(b);
+  return '#'+left.map((v,i)=>Math.round(v+(right[i]-v)*amount).toString(16).padStart(2,'0')).join('');
+}
+
+export function homeColor(presentation, base, time) {
+  const palette=[base,...(presentation.homePalette||['#66f4d5','#8fcfff','#b2a9ee','#f3a3b5','#b4f483']).slice(1)];
+  const phase=(time%(presentation.homeCycleMs||240000))/(presentation.homeCycleMs||240000)*palette.length;
+  const i=Math.floor(phase), blend=(1-Math.cos((phase-i)*Math.PI))/2;
+  return mixColor(palette[i],palette[(i+1)%palette.length],blend);
+}
+
+function softBlob(ctx, image, time, still) {
+  if (still) return ctx.drawImage(image, 0, 0);
+  // Draw the texture once. Smooth whole-surface deformation avoids sampling bands.
+  ctx.save(); ctx.translate(205, 249);
+  ctx.transform(1 + Math.sin(time / 3100) * .009, Math.sin(time / 4700) * .005, Math.cos(time / 3900) * .006, 1 + Math.cos(time / 4100) * .01, 0, 0);
+  ctx.translate(-205, -249); ctx.drawImage(image, 0, 0); ctx.restore();
+}
+
+export function renderSceneV2(ctx, {activity, definition, time = 0, reducedMotion = false, motion = {x: 0, y: 0}, attention = 0, touchEye = -1, previousEye = -1, eyeBlend = 1}) {
+  const presentation = definition.presentationV2 || defaultPresentationV2;
+  const e = {...definition.expressions[activity.expression], color: (presentation.modeColors || defaultPresentationV2.modeColors)[activity.mode || 'live']};
+  const t = reducedMotion ? 0 : time;
+  if((activity.mode||'live')==='live') e.color=mixColor(homeColor(presentation,e.color,t),e.color,attention);
+  const breath = Math.sin(t / e.periodMs * TAU);
+  ctx.fillStyle = '#050909'; ctx.fillRect(0, 0, 410, 502);
+  ctx.save();
+    // A single floating treatment across LIVE, WORK, SURF and SLEEP.
+    const offsetX = reducedMotion ? 0 : motion.x;
+    const offsetY = reducedMotion ? 0 : motion.y;
+    ctx.translate(205 + offsetX, 249 + offsetY + attention * 231);
+    ctx.rotate(reducedMotion ? 0 : offsetX * .0015);
+    ctx.scale(1 + attention * .3, 1 + attention * .3);
+    ctx.translate(-205, -249);
+    const bob = breath * e.bobPx * 1.7;
+    const halo = ctx.createRadialGradient(205, 248, 30, 205, 248, 299);
+    halo.addColorStop(0, e.color + '10'); halo.addColorStop(1, e.color + '00');
+    ctx.fillStyle = halo; ctx.fillRect(0, 0, 410, 502);
+    ctx.translate(0, bob);
+    softBlob(ctx, floatingBody(definition, e.color, t), t, reducedMotion);
+    const faceY=237-attention*27;
+    if(touchEye>=0) {
+      if(previousEye>=0&&eyeBlend<1) touchFace(ctx,definition,previousEye,presentation.task.eyeScale,faceY,1-eyeBlend);
+      if(previousEye<0&&eyeBlend<1) {ctx.save();ctx.globalAlpha=1-eyeBlend;largeFace(ctx,definition,e,t,presentation.task.eyeScale,faceY,reducedMotion);ctx.restore();}
+      touchFace(ctx,definition,touchEye,presentation.task.eyeScale,faceY,eyeBlend);
+    } else largeFace(ctx, definition, e, t, presentation.task.eyeScale, faceY, reducedMotion);
+  ctx.restore();
+}
+
+export function renderScene(ctx, options) {
+  if (options.version === 'v1') return renderSceneV1(ctx, options);
+  return renderSceneV2(ctx, options);
 }

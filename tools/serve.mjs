@@ -2,6 +2,7 @@ import http from 'node:http';
 import {readFile} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
 import path from 'node:path';
+import {createSurfReader} from './surf.mjs';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const assets = new Map([
   ['/', ['simulator/index.html', 'text/html']],
@@ -10,12 +11,24 @@ const assets = new Map([
   ['/simulator/engine.js', ['simulator/engine.js', 'text/javascript']],
   ['/simulator/renderer.js', ['simulator/renderer.js', 'text/javascript']],
   ['/character/expressions.json', ['character/expressions.json', 'application/json']],
+  ['/character/eye-expression-sheet.svg', ['character/eye-expression-sheet.svg', 'image/svg+xml']],
   ['/scenes/behavior.json', ['scenes/behavior.json', 'application/json']]
 ]);
 export function createServer() {
+  const readSurf = createSurfReader();
   return http.createServer(async (req, res) => {
     if (!/^(127\.0\.0\.1|localhost)(:\d+)?$/.test(req.headers.host || '')) {res.writeHead(403); return res.end('Local preview only');}
     if (!['GET', 'HEAD'].includes(req.method)) {res.writeHead(405, {Allow: 'GET, HEAD'}); return res.end();}
+    if (req.url === '/api/surf') {
+      try {
+        const data = JSON.stringify(await readSurf());
+        res.writeHead(200, {'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});
+        return res.end(req.method === 'HEAD' ? undefined : data);
+      } catch {
+        res.writeHead(503, {'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});
+        return res.end(JSON.stringify({error:'Surf forecast unavailable. Try reopening PLAY shortly.'}));
+      }
+    }
     const asset = assets.get(req.url?.split('?')[0]);
     if (!asset) {res.writeHead(404); return res.end('Not found');}
     try {

@@ -1,0 +1,27 @@
+# Mascot versions
+
+## V1 — preserved approved first draft
+
+Saved as Git tag `mascot-v1`, pointing to commit `7b3b3639bb80da4038ddcbb5a964532590f5a888`. The tag preserves the complete original project source at the approval point, including STUDIO MASCOT and AM/PM formatting. A source ZIP was also delivered in the chat outputs folder; upstream firmware is represented by its Git submodule pin rather than bundled into that archive.
+
+V1 keeps the simple compact floating gradient body, original dot-matrix face and existing scene props. The original renderer remains available in the V2 source as renderSceneV1; its function export was renamed without changing its drawing code. On the current preview server, open `http://127.0.0.1:4173/?mascot=v1` to compare. For the exact original complete source, use the saved tag rather than the shared current playground.
+
+## V2 — floating mascot and touch-revealed information
+
+The owner's references guided color fields, gradients fading into transparency, soft edges and halftone. They were not embedded or copied as artwork. The mascot remains original procedural Canvas geometry and the same four editable expression matrices.
+
+- All four modes use the owner-selected large floating rounded form, feathered edges, soft gradient fading into transparency and halftone dots. The initial full-screen Idle color-field study was superseded by the owner's choice of the floating style for every page.
+- Quiet view: the device contains only the mascot. Device header, mode navigation and text stay hidden until touch/click or keyboard activation. The old caption is removed from V2. The surrounding development playground remains available.
+- Touch or simulated notification: the mascot smoothly enlarges and moves into the lower half of the display. Only the eyes are drawn in the zoomed face; its mouth fades out. The top holds the menu and any message. Tap the device again or press Escape to dismiss. Manual menus time out when no control retains focus; notification/PLAY reading states remain open until dismissed or navigated away.
+- WORK is blue, PLAY lime and SLEEP lavender. Quiet LIVE slowly blends mint, sky, lavender, rose and lime through a seamless four-minute cycle. Its active menu returns to the LIVE base color. The existing color control customizes the current mode base. Pause/reduced motion freezes the color animation.
+- Motion combines gentle float, small independent corner-radius changes, continuous scale/shear and damped pointer/device-tilt response. The texture is drawn as one surface to avoid horizontal sampling lines. Body surface caching reuses one canvas and bounds texture refresh frequency. Pause and reduced-motion handling suppress ongoing movement. Sensor permission, where required, is requested by the browser only from an actual touch gesture. Physical device tilt and ESP32 IMU behavior have not been tested.
+- Edge diffusion is increased 30% (mask feather 10 px to 13 px), with a wider subtle color halo. V2 has no mouth in any pose. All its eyes are 40% larger than the previous V2 eye geometry; V1 remains unchanged.
+- Hold the device for 520 ms, then move it to cycle ten original eye pairs. Movement steps are distance/time gated and blend between patterns; release keeps the selected eyes and opens the current menu in the lower-half pose. Quick swipes still change pages. Pointer cancellation resets the hold without triggering a menu or a page change. Touch gestures use the device surface; the page can be scrolled outside it.
+- Original touch eye names: Orbit, Daydream, Glee, Lilt, Prism, Ripple, Intent, Sideglance, Soft wink and Starlit. They are procedural dot masks, not traced or embedded reference artwork. Definitions are in character/expressions.json; the editable SVG contact sheet is generated with tools/eye-sheet.mjs. Selecting a normal expression or changing pages returns to the standard behavior expressions.
+- PLAY replaces the displayed SURF name. After touch, it shows three public offshore wave forecasts, MPH wind, estimated energy and the named regional NOAA tide reference between the top menu and mascot. The old internal surf mode ID remains for data compatibility. See play-forecasts.md for sources and limitations.
+- The four expression states still work. Color, eye-dot size and float tuning remain connected to the existing controls. Reduced-motion handling and pause/speed controls remain intact.
+- The owner subsequently authorized the touch-reveal/notification layout changes above. The outer development layout remains the same; WORK remains the label for Task mode.
+
+V2 is the default renderer; explicit comparison URL: `http://127.0.0.1:4173/?mascot=v2`. No version-switch menu was introduced. V2 geometry lives in the optional presentationV2 object of character/expressions.json; legacy character JSON uses matching fallback defaults.
+
+This is a browser design iteration with a public forecast reader. No firmware changes, native agent registration, studio service changes, shared-memory import, global permissions changes or new network exposure were made. The existing local preview server was restarted to load its own fixed read-only forecast route; AI STUDIO services were not restarted. Browser alpha fades and blur are design references for a future firmware renderer, not verified ESP32 effects or performance.

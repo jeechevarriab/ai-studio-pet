@@ -18,12 +18,12 @@ Open http://127.0.0.1:4173/ on the same PC. Stop with Ctrl+C. The server listens
 
 ## Use the playground
 
-- Swipe left/right on the device, use arrow keys while it is focused, or select LIVE / WORK / SURF / SLEEP.
+- V2 opens with only the mascot on the device. Touch/click or press Enter to reveal its menu and move the enlarged, eyes-only face down. Tap again or press Escape to return. Swipe or use arrows for LIVE / WORK / PLAY / SLEEP.
 - Choose Auto for environment-driven behavior or override Idle, Happy, Focused or Sleeping.
 - Change time, rain, wave conditions and one of the five simulated agent identities. Task complete/retry buttons set explicit simulated events; Clear removes them.
 - Pause/resume movement, change animation speed or tune expression color, eye-dot size and float distance. Export saves editable JSON; restore edited definitions in character/expressions.json to load them on refresh. Reset discards in-session tuning.
 
-Time and events do not automatically expire; controls remain deterministic for review. No real agent status, location, weather or surf data is read. Session changes are not persisted automatically.
+Time and studio events remain simulated. PLAY reads public Open-Meteo offshore wave forecasts for the three requested Puerto Rico beach areas; it does not read your GPS or connect to the five real agents. Session changes are not persisted automatically. See docs/play-forecasts.md for attribution, approximate sampling points and limitations. Original V1 is saved as tag mascot-v1 and can be compared using `?mascot=v1`; V2 uses `?mascot=v2` or the default URL.
 
 ## Checks
 

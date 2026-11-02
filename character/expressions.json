@@ -4,6 +4,26 @@
   "designHeight": 502,
   "body": { "width": 224, "height": 194, "radius": 76, "color": "#66f4d5", "shadowColor": "#173d44" },
   "eyes": { "dotRadius": 2.2, "spacing": 7.5, "separation": 68, "color": "#09272b" },
+  "presentationV2": {
+    "eyeSizeMultiplier": 1.4,
+    "modeColors": { "live": "#66f4d5", "work": "#8fcfff", "surf": "#b4f483", "sleep": "#b2a9ee" },
+    "idle": { "eyeScale": 1.65 },
+    "task": { "width": 338, "height": 300, "radius": 112, "feather": 13, "eyeScale": 1.35 },
+    "homeCycleMs": 240000,
+    "homePalette": ["#66f4d5", "#8fcfff", "#b2a9ee", "#f3a3b5", "#b4f483"]
+  },
+  "touchEyes": [
+    { "name": "Orbit", "left": {"shape":"orbit","tilt":-0.16,"pupilX":0.12,"pupilY":0}, "right": {"shape":"orbit","tilt":0.16,"pupilX":-0.12,"pupilY":0} },
+    { "name": "Daydream", "left": {"shape":"crescent","tilt":-0.18}, "right": {"shape":"crescent","tilt":0.18} },
+    { "name": "Glee", "left": {"shape":"arc","tilt":0.06}, "right": {"shape":"arc","tilt":-0.06} },
+    { "name": "Lilt", "left": {"shape":"drop","tilt":-0.3,"pupilX":0.1,"pupilY":0.1}, "right": {"shape":"drop","tilt":0.3,"pupilX":-0.1,"pupilY":0.1} },
+    { "name": "Prism", "left": {"shape":"prism","tilt":0.08}, "right": {"shape":"prism","tilt":-0.08} },
+    { "name": "Ripple", "left": {"shape":"ribbon","tilt":-0.1}, "right": {"shape":"ribbon","tilt":0.1} },
+    { "name": "Intent", "left": {"shape":"intent","tilt":0.2,"pupilX":0.12,"pupilY":0.2}, "right": {"shape":"intent","tilt":-0.2,"pupilX":-0.12,"pupilY":0.2} },
+    { "name": "Sideglance", "left": {"shape":"orbit","tilt":0.15,"pupilX":0.43,"pupilY":-0.1}, "right": {"shape":"squint","tilt":0.15} },
+    { "name": "Soft wink", "left": {"shape":"sleepy","tilt":-0.1}, "right": {"shape":"drop","tilt":0.12,"pupilX":0,"pupilY":0.05} },
+    { "name": "Starlit", "left": {"shape":"starlit","tilt":0.2}, "right": {"shape":"starlit","tilt":-0.2} }
+  ],
   "expressions": {
     "idle": {
       "label": "Idle", "color": "#66f4d5", "periodMs": 4200, "bobPx": 5, "blinkMs": 180,

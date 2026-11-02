@@ -21,6 +21,14 @@ export function validateDefinitions(data) {
       if (!Array.isArray(e[side]) || e[side].length !== 7 || e[side].some(row => !/^[01]{5}$/.test(row))) throw Error('Eyes must be 5 × 7 binary matrices');
     }
   }
+  if(data.touchEyes!==undefined) {
+    const shapes=['orbit','crescent','arc','drop','prism','ribbon','intent','squint','sleepy','starlit'];
+    if(!Array.isArray(data.touchEyes)||data.touchEyes.length!==10||new Set(data.touchEyes.map(e=>e.name)).size!==10)throw Error('Ten distinct touch eye expressions are required');
+    for(const entry of data.touchEyes)for(const side of ['left','right']) {
+      const e=entry[side]; if(!e||!shapes.includes(e.shape)||!Number.isFinite(e.tilt)||Math.abs(e.tilt)>1)throw Error('Invalid touch eye geometry');
+      for(const key of ['pupilX','pupilY'])if(e[key]!==undefined&&(!Number.isFinite(e[key])||Math.abs(e[key])>1))throw Error('Invalid pupil offset');
+    }
+  }
   return data;
 }
 
