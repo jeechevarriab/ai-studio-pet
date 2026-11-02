@@ -3,8 +3,11 @@
 Owner authorized synced customization with owner-only sign-in and connection to
 the five STUDIO agents. The editor is https://studio-mascot.jesse-ech.chatgpt.site/customize.
 It provides 48 validated controls across Color, Face, Shape, Light and Interaction.
-Changes preview in the device; Undo is independent per control. Discard restores
-the confirmed saved design. Apply stores the design in Sites R2 with a revision
+Changes preview in the device; Undo is independent per control.
+Each control also has its own Apply button, which saves only that setting while
+leaving other preview edits pending. The bottom Apply & Save button saves all
+pending settings. Buttons are enabled only for the signed-in owner.
+Discard restores the confirmed saved design. Apply stores the design in Sites R2 with a revision
 check; another device's newer save cannot be silently overwritten. The app reads
 the shared saved design on launch, return, and every 20 seconds while visible.
 Confirmed settings may be cached locally for offline viewing, never auth tokens.

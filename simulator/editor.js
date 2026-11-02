@@ -1,4 +1,4 @@
-import {DESIGN_GROUPS,DESIGN_DEFAULTS,validateDesign,editValue,undoValue} from './design.js';
+import {DESIGN_GROUPS,DESIGN_DEFAULTS,validateDesign,editValue,undoValue,designForApply} from './design.js';
 export async function connectDesignEditor({preview,apply,mode}){
  const editing=location.pathname==='/customize';
  let applied={...DESIGN_DEFAULTS},draft={...DESIGN_DEFAULTS},history={},revision=0,owner=false,loading=true,saving=false,signature='';
@@ -6,16 +6,33 @@ export async function connectDesignEditor({preview,apply,mode}){
  const status=document.createElement('p');status.className='editor-status';status.setAttribute('role','status');
  const notify=message=>{status.textContent=message;};
  const button=(label,action,cls='')=>{const b=document.createElement('button');b.type='button';b.textContent=label;b.className=cls;b.addEventListener('click',action);return b;};
- const controls=new Map(),outputs=new Map(),undos=new Map();
+ const controls=new Map(),outputs=new Map(),undos=new Map(),applies=new Map();
  const refresh=()=>{
   for(const group of DESIGN_GROUPS)for(const f of group.fields){const input=controls.get(f.key);if(!input)continue;
    if(f.type==='checkbox')input.checked=draft[f.key];else input.value=draft[f.key];
    if(outputs.has(f.key))outputs.get(f.key).textContent=String(draft[f.key]);
    undos.get(f.key).disabled=!history[f.key]?.length;
+   applies.get(f.key).disabled=loading||saving||!owner||draft[f.key]===applied[f.key];
   }
   if(saveButton)saveButton.disabled=loading||saving||!owner;
  };
  let saveButton=null;
+ async function saveDesign(key=null){
+  if(saving||!owner||loading)return;
+  const submitted=designForApply(applied,draft,key),draftAtSubmit={...draft};
+  saving=true;refresh();notify('Saving '+(key?'this setting':'your design')+'…');
+  try{
+   const response=await fetch('/api/design',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({settings:submitted,revision})});
+   const body=await response.json();if(!response.ok)throw Error(body.error||'Could not save. Your preview is still here.');
+   revision=body.revision;applied=validateDesign(body.settings);
+   // Keep unrelated drafts and edits made while the save was in flight.
+   for(const field of Object.keys(applied))if((key===null||field===key)&&draft[field]===draftAtSubmit[field])draft[field]=applied[field];
+   try{localStorage.setItem('mascot-confirmed-design',JSON.stringify({settings:applied,revision}));}catch{}
+   preview(draft);
+   const pending=Object.keys(applied).some(field=>draft[field]!==applied[field]);
+   notify(key?(pending?'Setting saved across devices. Other preview changes are still pending.':'Setting saved across devices.'):pending?'Submitted changes saved. Newer preview changes are still pending.':'Saved. Your mascot will use this design on every device.');
+  }catch(error){notify(error.message);}finally{saving=false;refresh();}
+ }
  if(editing){
   document.documentElement.classList.add('customizing');
   const shell=document.createElement('section');shell.className='editor-shell';shell.setAttribute('aria-label','Mascot design editor');
@@ -38,20 +55,18 @@ export async function connectDesignEditor({preview,apply,mode}){
     if(f.type==='range'){input.min=f.min;input.max=f.max;input.step=f.step;const output=document.createElement('output');output.htmlFor=input.id;outputs.set(f.key,output);label.append(output);}
     if(f.type==='text')input.maxLength=12;
     const undo=button('Undo',()=>{draft=undoValue(draft,history,f.key);preview(draft);refresh();notify('Previous '+f.label.toLowerCase()+' restored. Apply to save.');},'setting-undo');undo.setAttribute('aria-label','Undo '+f.label);undos.set(f.key,undo);
+    const applyOne=button('Apply',()=>void saveDesign(f.key),'setting-apply');applyOne.setAttribute('aria-label','Apply '+f.label);applies.set(f.key,applyOne);
+    const actions=document.createElement('div');actions.className='setting-actions';actions.append(undo,applyOne);
     let dragging=false,recorded=false;
     input.addEventListener('pointerdown',()=>{dragging=true;recorded=false;});
     for(const event of ['pointerup','pointercancel','change','blur'])input.addEventListener(event,()=>{dragging=false;});
     input.addEventListener('input',()=>{if(loading)return;try{const value=f.type==='range'?Number(input.value):f.type==='checkbox'?input.checked:input.value;const changed=value!==draft[f.key];draft=editValue(draft,dragging&&recorded?{}:history,f.key,value);if(dragging&&changed)recorded=true;preview(draft);refresh();notify('Previewing changes. Apply to save across devices.');}catch(error){notify(error.message);}});
-    controls.set(f.key,input);row.append(label,input,undo);section.append(row);
+    controls.set(f.key,input);row.append(label,input,actions);section.append(row);
    }shell.append(section);
   }
   const footer=document.createElement('footer');footer.className='editor-actions';
   const discard=button('Discard changes',()=>{draft={...applied};history={};preview(draft);refresh();notify('Back to your saved design.');});
-  saveButton=button('Apply & save',async()=>{
-   if(saving||!owner)return;saving=true;refresh();notify('Saving your design…');
-   try{const response=await fetch('/api/design',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({settings:validateDesign(draft),revision})});const body=await response.json();if(!response.ok)throw Error(body.error||'Could not save. Your preview is still here.');revision=body.revision;applied={...body.settings};draft={...applied};apply(applied);notify('Saved. Your mascot will use this design on every device.');}
-   catch(error){notify(error.message);}finally{saving=false;refresh();}
-  },'editor-apply');footer.append(discard,saveButton);shell.append(status,footer);document.body.append(shell);
+  saveButton=button('Apply & save',()=>void saveDesign(),'editor-apply');footer.append(discard,saveButton);shell.append(status,footer);document.body.append(shell);
   notify('Loading your saved design…');refresh();
  }
  const refreshSaved=async()=>{

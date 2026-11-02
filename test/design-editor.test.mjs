@@ -1,6 +1,12 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';
-import {DESIGN_DEFAULTS,validateDesign,designDefinition,editValue,undoValue} from '../simulator/design.js';
+import {DESIGN_DEFAULTS,validateDesign,designDefinition,editValue,undoValue,designForApply} from '../simulator/design.js';
 import {reduceNative,reduceTask,STUDIO_AGENTS} from '../gateway/status-relay.mjs';
+test('Apply on one control preserves other saved settings while Apply all includes every draft',()=>{
+ const saved={...DESIGN_DEFAULTS},draft={...saved,eyeSize:120,workColor:'#aabbcc'};
+ const one=designForApply(saved,draft,'eyeSize');assert.equal(one.eyeSize,120);assert.equal(one.workColor,saved.workColor);
+ assert.equal(draft.workColor,'#aabbcc');assert.deepEqual(designForApply(saved,draft),draft);
+ assert.throws(()=>designForApply(saved,draft,'unknown'));
+});
 test('feature undo is independent and design settings cannot inject arbitrary fields',()=>{
  const history={};let draft={...DESIGN_DEFAULTS};draft=editValue(draft,history,'eyeSize',120);draft=editValue(draft,history,'workColor','#abcdef');draft=undoValue(draft,history,'eyeSize');
  assert.equal(draft.eyeSize,100);assert.equal(draft.workColor,'#abcdef');

@@ -1,5 +1,13 @@
 # Progress — 2026-11-02
 
+## Apply for every control
+
+Added an owner-only Apply button beside each of the 48 Undo controls. A row Apply
+merges only that setting into the confirmed design; unrelated drafts and edits
+made during the save remain pending. Apply & Save retains the save-all action.
+The same cloud revision/etag checks and auth apply. Per-setting save isolation
+is covered by a new regression; 25 local checks pass.
+
 ## Watch-style companion customization and live STUDIO status
 
 Owner requested an Apple Watch companion-style editor, Undo per feature and Apply

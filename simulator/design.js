@@ -63,3 +63,7 @@ export function editValue(draft,history,key,value){
  return next;
 }
 export function undoValue(draft,history,key){const stack=history[key];return stack?.length?validateDesign({...draft,[key]:stack.pop()}):draft;}
+export function designForApply(applied,draft,key=null){
+ if(key!==null&&!Object.hasOwn(DESIGN_DEFAULTS,key))throw Error('Unknown design setting');
+ return validateDesign(key===null?draft:{...applied,[key]:draft[key]});
+}
