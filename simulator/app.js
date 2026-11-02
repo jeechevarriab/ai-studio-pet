@@ -12,7 +12,7 @@ let time = 0, lastTimestamp = 0, previousStatus = '';
 let controlsTimer, suppressTap = false, tiltAttempted = false, tiltOrigin = null, lastPointerMotion = 0;
 let attention = 0, attentionTarget = 0, activeNotice = null;
 let holdTimer, holding = false, touchEye = -1, previousEye = -1, eyeChangedAt = 0;
-const defaultModeColors = {live: '#66f4d5', work: '#8fcfff', surf: '#b4f483', sleep: '#b2a9ee'};
+const defaultModeColors = {live: '#66f4d5', work: '#ff392c', surf: '#b4f483', sleep: '#b2a9ee'};
 const modeColor = () => (definition.presentationV2?.modeColors || defaultModeColors)[state.mode];
 let surfData = null, surfPending = false;
 
@@ -116,6 +116,7 @@ async function enableTilt() {
 
 function updateUI() {
   activity = {...deriveActivity(state, rules), mode: state.mode};
+  $('device').classList.toggle('work-palette',mascotVersion==='v2'&&state.mode==='work');
   syncPlayPanel();
   document.querySelectorAll('[data-mode]').forEach(b => b.setAttribute('aria-pressed', b.dataset.mode === state.mode));
   document.querySelectorAll('[data-expression]').forEach(b => b.setAttribute('aria-pressed', b.dataset.expression === state.expression));

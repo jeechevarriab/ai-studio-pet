@@ -6,7 +6,9 @@
   "eyes": { "dotRadius": 2.2, "spacing": 7.5, "separation": 68, "color": "#09272b" },
   "presentationV2": {
     "eyeSizeMultiplier": 1.4,
-    "modeColors": { "live": "#66f4d5", "work": "#8fcfff", "surf": "#b4f483", "sleep": "#b2a9ee" },
+    "eyeDotMultiplier": 0.6,
+    "eyeSampling": 2,
+    "modeColors": { "live": "#66f4d5", "work": "#ff392c", "surf": "#b4f483", "sleep": "#b2a9ee" },
     "idle": { "eyeScale": 1.65 },
     "task": { "width": 338, "height": 300, "radius": 112, "feather": 13, "eyeScale": 1.35 },
     "homeCycleMs": 240000,

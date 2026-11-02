@@ -18,3 +18,12 @@ test('home color completes a seamless slow cycle and task diffusion is 30 percen
   assert.equal(homeColor(p,base,p.homeCycleMs-1),base);
   assert.equal(p.task.feather,10*1.3);
 });
+test('smaller eye dots use more samples while preserving the original eye coordinate bounds',()=>{
+  assert.equal(character.presentationV2.eyeDotMultiplier,.6);
+  assert.equal(character.presentationV2.eyeSizeMultiplier,1.4);
+  for(const e of character.touchEyes)for(const side of ['left','right']){
+    const detailed=eyeDots(e[side],2),original=eyeDots(e[side]);
+    assert.ok(detailed.length>original.length*2);
+    assert.ok(detailed.every(([x,y])=>Math.abs(x)<=6&&Math.abs(y)<=5));
+  }
+});

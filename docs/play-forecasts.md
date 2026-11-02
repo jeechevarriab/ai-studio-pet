@@ -22,7 +22,7 @@ The app requests `/api/surf` only when PLAY information is opened. The loopback 
 
 The UI displays wave height (ft), period (s), wave direction, 10 m wind speed (MPH) and direction, an estimated energy value and a regional tide stage. Provider errors produce unavailable values, not fake data. Wave/wind samples older than three hours or with invalid times show missing values. Reopening PLAY refreshes expired data. This is not a breaking-wave transformation or surf-safety/rating system.
 
-Verification on 2026-11-02: real API responses loaded for all three configured points and appeared in the browser panel; two points shared a resolved wave cell. Wind and NOAA prediction requests also returned real data. Five isolated forecast tests cover unit/time/null normalization, fixed-provider request/cache sharing, failure handling, all four tide labels and energy scaling/missing data. All fifteen project tests passed, including the separate mascot design checks. Provider availability is not guaranteed and exact lineup accuracy has not been validated.
+Verification on 2026-11-02: real API responses loaded for all three configured points and appeared in the browser panel; two points shared a resolved wave cell. Wind and NOAA prediction requests also returned real data. Five isolated forecast tests cover unit/time/null normalization, fixed-provider request/cache sharing, failure handling, all four tide labels and energy scaling/missing data. All sixteen project tests passed, including the separate mascot design checks. Provider availability is not guaranteed and exact lineup accuracy has not been validated.
 
 ## Wind, energy and tide definitions
 

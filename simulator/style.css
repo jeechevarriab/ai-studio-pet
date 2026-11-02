@@ -6,6 +6,11 @@
   .status-dot,.tiny-dot {display:inline-block;width:6px;height:6px;border-radius:50%;background:#448267} .sr-only {position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 }
 @layer layout {
+  .mascot-v2 .work-palette .device-header {color:#61504d}
+  .mascot-v2 .work-palette .mode-nav button {color:#7c6a65}
+  .mascot-v2 .work-palette .mode-nav button[aria-pressed="true"] {color:#c4271e}
+  .mascot-v2 .work-palette .device-message {color:#3b1915}
+  .mascot-v2 .work-palette .device-message p {color:#76534c}
   .mascot-v2 .device {touch-action:none}
   .play-panel {display:none}
   .mascot-v2 .play-panel:not([hidden]) {display:block;position:absolute;top:24%;left:8%;right:8%;color:#d5e3da}
