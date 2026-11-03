@@ -276,3 +276,27 @@ Inspected vector preview and exported PNG, verified dimensions and hosted Worker
 asset/root fallback/page-link checks. Direct browser download waiting timed out;
 recovered by saving the export page's generated PNG data links without installing
 any dependency. All design/account settings and existing drafts were untouched.
+
+## Non-blocking mobile editor and app interaction audit — 2026-11-03
+
+Published Sites version 25, source c58c93e83c632df78b99b8cc01c99485cae1edbc;
+deployment appgdep_6ae9f181c9d081918f876beaf5d8e2d7 succeeded. Removed sticky
+bottom save overlay: pending Save/Discard lives only in normal flow at the end,
+and disappears when clean. Parameter actions report Saving/Saved/Retry inline;
+failed saves retain values and show a local error. Kept per-field Undo/Apply and
+section controls. Raised mobile editable text to 16px, enlarged tap targets and
+allowed vertical scrolling through the editor preview. Hex Undo groups one edit;
+recents record completed colors, not intermediate inputs. Only the active editor
+panel updates during drags. Favorites requires a checked destination. App menu and
+Customize targets are larger and separated from panels; menu taps no longer toggle
+body gestures or request sensors. Saved artwork/design data is unchanged.
+
+One focused synthetic browser review covered the exact reported Face/picker flow
+at 390×700 with no save overlay, pending footer below content, local Saved state,
+a deliberate save failure plus successful Retry with no lost value, draft retention
+across tabs and section Apply isolation, one-step hex Undo/clean recents, Favorites
+zero-target guards and app mode navigation retaining its menu. Measured 40px mode
+buttons and no Customize/nav/content overlap. Syntax and built Worker validation
+passed. Preview: docs/previews/mobile-ux-clear-controls.jpg. All test writes used
+the disposable loopback owner/bucket; no production preferences or existing user
+drafts changed. Physical Safari keyboard/sensors and hardware touch unverified.

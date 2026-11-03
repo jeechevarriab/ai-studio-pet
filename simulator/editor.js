@@ -5,7 +5,7 @@ export async function connectDesignEditor({preview,apply,mode}){
  const editing=location.pathname==='/customize';
  let selectedMode='live';
  const fieldValue=(design,key)=>modeSetting(design,selectedMode,key);
- let applied={...DESIGN_DEFAULTS},draft={...DESIGN_DEFAULTS},history={},revision=0,owner=false,loading=true,saving=false,signature='';
+ let applied={...DESIGN_DEFAULTS},draft={...DESIGN_DEFAULTS},history={},revision=0,owner=false,loading=true,saving=false,signature='',saveFeedback=null;
  const accept=settings=>{const next=designSignature(settings);if(next!==signature){signature=next;apply(settings);}};
  const status=document.createElement('p');status.className='editor-status';status.setAttribute('role','status');
  const notify=message=>{status.textContent=message;};
@@ -28,7 +28,7 @@ export async function connectDesignEditor({preview,apply,mode}){
  }
  function stepParameter(group,direction){const stack=parameterStack(group.id),snapshot=stack[direction].pop();if(!snapshot)return;stack[direction==='undo'?'redo':'undo'].push(groupSnapshot(draft,selectedMode,group.id));draft=restoreGroupSettings(draft,selectedMode,group.id,snapshot);delete pendingParameterStart[group.id];preview(draft);refresh();notify((direction==='undo'?'Previous':'Next')+' '+group.label.toLowerCase()+' settings restored. Apply to save.');}
  const isSpectrumKey=key=>/^ditherPalette(?:Count|\d+)?$/.test(key);
- const fieldState=key=>({canUndo:!!history[settingHistoryKey(selectedMode,key)]?.length,canApply:!loading&&!saving&&owner&&(isSpectrumKey(key)?DITHER_SPECTRUM_KEYS.filter(k=>!['colorMode','ditherPreset'].includes(k)):[key]).some(k=>fieldValue(draft,k)!==fieldValue(applied,k))});
+ const fieldState=key=>{const changed=(isSpectrumKey(key)?DITHER_SPECTRUM_KEYS.filter(k=>!['colorMode','ditherPreset'].includes(k)):[key]).some(k=>fieldValue(draft,k)!==fieldValue(applied,k)),feedback=saveFeedback?.mode===selectedMode&&(saveFeedback.key===key||saveFeedback.key==='ditherSpectrum'&&isSpectrumKey(key))?saveFeedback:null;return {canUndo:!!history[settingHistoryKey(selectedMode,key)]?.length,canApply:!loading&&!saving&&owner&&changed,savePhase:feedback?.phase==='saved'&&changed||feedback?.phase==='error'&&!changed?null:feedback?.phase,error:feedback?.error};};
  function undoField(group,key){if(loading||saving||!history[settingHistoryKey(selectedMode,key)]?.length)return;if(group.id==='dither')recordDither();else{const stack=parameterStack(group.id);stack.undo.push(groupSnapshot(draft,selectedMode,group.id));if(stack.undo.length>50)stack.undo.shift();stack.redo=[];}draft=undoModeValue(draft,history,selectedMode,key);preview(draft);refresh();notify('Previous parameter value restored. Apply to save.');}
  const applyField=key=>void saveDesign(isSpectrumKey(key)?'ditherSpectrum':key);
  const ditherSnapshot=()=>Object.fromEntries(['colorMode',...DITHER_SETTING_KEYS].map(key=>[key,fieldValue(draft,key)]));
@@ -70,8 +70,8 @@ export async function connectDesignEditor({preview,apply,mode}){
    const swatch=document.createElement('div');swatch.className='favorite-swatch';swatch.style.setProperty('--favorite-color',item.look.color);swatch.style.background=item.look.background;swatch.setAttribute('aria-hidden','true');if(item.thumbnail){const image=document.createElement('img');image.src=item.thumbnail;image.alt='';swatch.classList.add('has-thumbnail');swatch.append(image);}
    const info=document.createElement('div'),name=document.createElement('h3'),detail=document.createElement('p');name.textContent=item.name;detail.textContent=labels[item.sourceMode]+' · '+(item.look.values.colorMode==='dither'?'Dither':'Cloud')+' · '+(item.look.values.expression==='auto'?'Activity eyes':item.look.values.expression);info.append(name,detail);
    const actions=document.createElement('div');actions.className='favorite-actions';
-   const previewButton=button('Preview',()=>previewFavorite(item));
-   const applyButton=button('Apply favorite',()=>{if(previewFavorite(item))void saveDesign('favoriteLook',{look:item.look,modes:targets()});});applyButton.dataset.ownerAction='true';
+   const previewButton=button('Preview',()=>previewFavorite(item));previewButton.dataset.favoriteAction='preview';
+   const applyButton=button('Apply favorite',()=>{if(previewFavorite(item))void saveDesign('favoriteLook',{look:item.look,modes:targets()});});applyButton.dataset.ownerAction='true';applyButton.dataset.favoriteAction='apply';
    const remove=button('Remove',()=>{if(confirm('Remove “'+item.name+'” from Favorites? This does not change any page.'))void writeFavorite('remove',{id:item.id});});remove.dataset.ownerAction='true';
    actions.append(previewButton,applyButton,remove);card.append(swatch,info,actions);favoriteList.append(card);
   }refresh();
@@ -79,8 +79,8 @@ export async function connectDesignEditor({preview,apply,mode}){
  const refresh=()=>{
   const dirty=designSignature(draft)!==designSignature(applied);
   if(modeHint)modeHint.textContent='Editing '+labels[selectedMode]+' · Changes preview here. Apply saves across devices.';
-  if(ditherEditor)ditherEditor.refresh(resolveModeDesign(draft,selectedMode),{fieldState,canEdit:!loading&&!saving,canUndo:!!ditherStack().undo.length,canRedo:!!ditherStack().redo.length});
-  for(const [id,editor]of parameterEditors){const stack=parameterStack(id);editor.refresh(resolveModeDesign(draft,selectedMode),{fieldState,mode:selectedMode,canEdit:!loading&&!saving,canUndo:!!stack.undo.length,canRedo:!!stack.redo.length,canApply:!loading&&!saving&&owner&&groupSettingKeys(id,selectedMode).some(key=>fieldValue(draft,key)!==fieldValue(applied,key))});}
+  if(ditherEditor&&activeGroup==='dither')ditherEditor.refresh(resolveModeDesign(draft,selectedMode),{fieldState,canEdit:!loading&&!saving,canUndo:!!ditherStack().undo.length,canRedo:!!ditherStack().redo.length});
+  for(const [id,editor]of parameterEditors){if(id!==activeGroup)continue;const stack=parameterStack(id),changed=groupSettingKeys(id,selectedMode).some(key=>fieldValue(draft,key)!==fieldValue(applied,key)),feedback=saveFeedback?.mode===selectedMode&&saveFeedback.key==='group:'+id?saveFeedback:null;editor.refresh(resolveModeDesign(draft,selectedMode),{fieldState,mode:selectedMode,canEdit:!loading&&!saving,canUndo:!!stack.undo.length,canRedo:!!stack.redo.length,canApply:!loading&&!saving&&owner&&changed,savePhase:changed&&feedback?.phase==='saved'?null:feedback?.phase});}
   if(!targetsTouched)for(const [value,input]of favoriteTargets)input.checked=value===selectedMode;
   for(const group of DESIGN_GROUPS)for(const f of group.fields){const input=controls.get(f.key);if(!input)continue;
    if(f.type==='checkbox')input.checked=fieldValue(draft,f.key);else input.value=fieldValue(draft,f.key);
@@ -93,11 +93,13 @@ export async function connectDesignEditor({preview,apply,mode}){
    applies.get(f.key).disabled=loading||saving||!owner||fieldValue(draft,f.key)===fieldValue(applied,f.key);
    applies.get(f.key).title=loading?'Loading your design':!owner?'Sign in with the owner account to save':saving?'Saving…':fieldValue(draft,f.key)===fieldValue(applied,f.key)?'Change this setting to activate Apply':'Save this setting across devices';
   }
-  if(saveButton){saveButton.disabled=loading||saving||!owner||!dirty;saveButton.textContent=saving?'Saving…':dirty?'Save all changes':'All changes saved';}
+  if(saveButton){saveButton.disabled=loading||saving||!owner||!dirty;saveButton.textContent=saving?'Saving…':'Save all changes';}
+  if(saveFooter)saveFooter.hidden=!dirty&&!saving;
+  if(discardButton)discardButton.disabled=loading||saving||!dirty;
   if(favoriteSave)favoriteSave.disabled=loading||saving||favoritesBusy||!owner||!favoritesLoaded||!favoriteName.value.trim()||favorites.items.length>=30;
   if(favoriteReload)favoriteReload.disabled=loading||favoritesBusy||!owner;
   if(undoFavorite)undoFavorite.disabled=loading||saving||!favoriteSnapshot;
-  if(favoriteList)for(const control of favoriteList.querySelectorAll('button'))control.disabled=loading||saving||favoritesBusy||!favoritesLoaded||(control.dataset.ownerAction==='true'&&!owner);
+  if(favoriteList)for(const control of favoriteList.querySelectorAll('button')){control.disabled=loading||saving||favoritesBusy||!favoritesLoaded||(control.dataset.ownerAction==='true'&&!owner)||(control.dataset.favoriteAction&&!targets().length);if(control.dataset.favoriteAction)control.title=targets().length?'':'Choose at least one destination page above';}
   for(const input of favoriteTargets.values())input.disabled=loading||saving;
   if(randomButton)randomButton.disabled=loading||saving;
   if(cloudRandomButton)cloudRandomButton.disabled=loading||saving;
@@ -108,13 +110,13 @@ export async function connectDesignEditor({preview,apply,mode}){
   if(undoRandomButton)undoRandomButton.disabled=loading||saving||!randomHistory[selectedMode]?.length;
   if(applyRandomButton)applyRandomButton.disabled=loading||saving||!owner||!['colorMode',...DITHER_SETTING_KEYS].some(key=>fieldValue(draft,key)!==fieldValue(applied,key));
  };
- let saveButton=null;
+ let saveButton=null,saveFooter=null,discardButton=null;
  async function saveDesign(key=null,favorite=null){
   if(saving||!owner||loading)return;
   const groupId=key?.startsWith('group:')?key.slice(6):null;
   const submitted=favorite?applyFavoriteLook(applied,favorite.look,favorite.modes):groupId?designForGroupApply(applied,draft,selectedMode,groupId):designForModeApply(applied,draft,selectedMode,key),draftAtSubmit=structuredClone(draft);
   const selection=key===null||favorite?null:{mode:selectedMode,key,keys:groupId?groupSettingKeys(groupId,selectedMode):key==='ditherSpectrum'?DITHER_SPECTRUM_KEYS:key==='modeDefault'?defaultSettingKeys(selectedMode):key==='cloudLook'?cloudSettingKeys(selectedMode):[...(key.startsWith('dither')&&fieldValue(draft,'colorMode')==='dither'?['colorMode','ditherPreset']:[]),...(key==='ditherPreset'?DITHER_SETTING_KEYS:[key])]};
-  saving=true;refresh();notify('Saving '+(key?'this setting':'your design')+'…');
+  saving=true;saveFeedback={mode:selectedMode,key,phase:'saving'};refresh();notify('Saving '+(key?'this setting':'your design')+'…');
   try{
    const response=await fetch('/api/design',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({settings:submitted,revision}),signal:AbortSignal.timeout(12000)});
    const body=await response.json();if(!response.ok)throw Error(body.error||'Could not save. Your preview is still here.');
@@ -124,9 +126,10 @@ export async function connectDesignEditor({preview,apply,mode}){
    else draft=reconcileSavedDesign(applied,draftAtSubmit,draft,selection);
    try{localStorage.setItem('mascot-confirmed-design',JSON.stringify({settings:applied,revision}));}catch{}
    preview(draft);
+   saveFeedback={...saveFeedback,phase:'saved'};
    const pending=designSignature(draft)!==designSignature(applied);
    notify(key?(pending?'Setting saved across devices. Other preview changes are still pending.':'Setting saved across devices.'):pending?'Submitted changes saved. Newer preview changes are still pending.':'Saved. Your mascot will use this design on every device.');
-  }catch(error){notify(error.message);}finally{saving=false;refresh();}
+  }catch(error){saveFeedback={...saveFeedback,phase:'error',error:error.message};notify(error.message);}finally{saving=false;refresh();}
  }
  if(editing){
   document.documentElement.classList.add('customizing');
@@ -181,9 +184,10 @@ export async function connectDesignEditor({preview,apply,mode}){
   const note=document.createElement('p');note.className='editor-description';note.textContent='Copies the complete look to checked pages. Alarm, sensor and STUDIO settings stay as they are.';
   const favoriteTools=document.createElement('div');favoriteTools.className='favorite-actions';favoriteReload=button('Reload favorites',()=>void loadFavorites());undoFavorite=button('Undo favorite preview',()=>{if(!favoriteSnapshot)return;for(const target of favoriteSnapshot.modes)draft=applyFavoriteLook(draft,captureFavoriteLook(favoriteSnapshot.design,target),[target]);favoriteSnapshot=null;preview(draft);refresh();notify('Favorite preview undone. Apply to save any remaining edits.');});favoriteTools.append(favoriteReload,undoFavorite);
   favoriteList=document.createElement('div');favoriteList.className='favorite-list';favoriteList.textContent='Sign in as owner to load and save your favorites.';favoritePanel.append(favoriteHeading,favoriteCopy,favoriteForm,targetBox,note,favoriteTools,favoriteList);shell.append(favoritePanel);
-  const footer=document.createElement('footer');footer.className='editor-actions';
-  const discard=button('Discard previews',()=>{if(loading||saving)return;draft=structuredClone(applied);history={};randomHistory={};cloudHistory={};defaultPending={};favoriteSnapshot=null;ditherHistory={};pendingDitherStart=null;parameterHistory={};pendingParameterStart={};ditherEditor?.closePicker();for(const editor of parameterEditors.values())editor.closePicker();preview(draft);refresh();notify('Back to your saved design.');});
-  saveButton=button('Save all changes',()=>void saveDesign(),'editor-apply');footer.append(status,discard,saveButton);shell.append(footer);document.body.append(shell);
+  const footer=document.createElement('footer');footer.className='editor-actions';saveFooter=footer;
+  const discard=button('Discard previews',()=>{if(loading||saving)return;draft=structuredClone(applied);history={};randomHistory={};cloudHistory={};defaultPending={};favoriteSnapshot=null;ditherHistory={};pendingDitherStart=null;parameterHistory={};pendingParameterStart={};saveFeedback=null;ditherEditor?.closePicker();for(const editor of parameterEditors.values())editor.closePicker();preview(draft);refresh();notify('Back to your saved design.');});
+  discardButton=discard;
+  saveButton=button('Save all changes',()=>void saveDesign(),'editor-apply');footer.append(discard,saveButton);header.append(status);shell.append(footer);document.body.append(shell);
   window.addEventListener('beforeunload',event=>{if(!loading&&designSignature(draft)!==designSignature(applied)){event.preventDefault();event.returnValue='';}});
   notify('Loading your saved design…');refresh();
   void fetch('/character/cloud-default-design.json',{cache:'no-store'}).then(response=>{if(!response.ok)throw Error('Restore point unavailable');return response.json();}).then(data=>{defaultDesign=validateDesign(data.settings);refresh();}).catch(()=>{if(defaultButton)defaultButton.title='Saved restore point could not load. Reload to try again.';});

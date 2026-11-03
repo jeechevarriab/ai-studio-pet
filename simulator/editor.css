@@ -82,3 +82,20 @@ html.customizing, .customizing body{background:#08090b;color:#f6f6f7;color-schem
 .parameter-line{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:7px}.parameter-line[hidden]{display:none}.parameter-line .dither-control{min-width:0;gap:7px;padding:7px 9px}.parameter-line .dither-control>label{min-width:0;flex:1;overflow-wrap:anywhere}.parameter-line .dither-number{width:48px;flex-shrink:0}.parameter-line .dither-color-value{flex-shrink:0;gap:5px}.parameter-line .dither-color-value span{min-width:56px;padding:6px;font-size:11px}
 .parameter-field-actions{display:flex;gap:4px}.parameter-field-actions button{min-width:39px;min-height:40px;padding:5px 6px;font:11px Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;letter-spacing:0;border:1px solid #49404f;border-radius:7px;color:#c4b9d1;background:#29232f}.parameter-field-actions button:last-child{background:#bedff2;color:#162633;border-color:#bedff2}
 .customizing select,.customizing select option,.customizing select optgroup{color-scheme:dark;background-color:#111014;color:#fff}
+
+/* Actions stay in document flow; no bottom overlay can cover a control or picker. */
+.editor-actions{position:static;z-index:auto;margin:20px 0 0;padding:16px 0 24px;border-top:1px solid #30303a;background:transparent}
+.editor-actions[hidden]{display:none!important}
+.editor-heading .editor-status{font-size:12px;line-height:1.5;min-height:0;margin:12px 0 0;color:#a6b9c6}
+.parameter-field-actions button{min-height:44px;min-width:41px}
+.parameter-field-actions button:disabled{background:transparent;color:#8b8294;border-color:transparent;opacity:.55}
+.parameter-field-actions .parameter-saved:disabled{color:#8fd1ae;opacity:1}
+.parameter-field-error{grid-column:1/-1;margin:0 0 7px;padding:0 6px;color:#ffb2a7;font-size:12px;line-height:1.5}.parameter-field-error[hidden]{display:none}
+.dither-color-picker{scroll-margin-top:112px}
+.dither-color-picker>header button,.dither-hex-row button,.dither-eyedropper{min-width:40px;min-height:40px}
+.dither-color-suggestions{gap:8px}.dither-color-suggestions .dither-color-chip{width:30px;height:30px;min-height:30px}
+.customizing .device{touch-action:pan-y}
+@media(max-width:980px){.customizing .dither-hex-row input,.customizing .parameter-text,.customizing .dither-number,.customizing .dither-control select{font-size:16px}.parameter-line .dither-number{width:48px}.editor-shell{padding-bottom:env(safe-area-inset-bottom)}.editor-actions button{min-height:44px}.editor-tabs{scroll-margin-top:12px}.dither-control,.parameter-line{scroll-margin-top:116px}}
+.app-only .customize-link{top:9%;min-height:36px;min-width:82px;display:inline-flex;align-items:center;justify-content:center;font-size:11px}
+.app-only .device-bottom{top:20%}.app-only .mode-nav button{min-height:40px;padding:8px 3px;font-size:clamp(11px,3cqw,14px);letter-spacing:.05em}
+.app-only .studio-panel,.app-only .sleep-panel,.app-only .play-panel{top:33%}

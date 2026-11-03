@@ -1,5 +1,27 @@
 # Companion editor and STUDIO activity
 
+## Mobile interaction audit and non-blocking saves — 2026-11-03
+
+Owner screenshot showed the sticky bottom save footer covering picker/ASCII
+controls. Save/discard now stays in normal flow at the document end and disappears
+when nothing is pending. Status is non-floating; each parameter shows Saved,
+Saving or Retry locally. Failed saves retain the value and show an inline error.
+Individual Undo/Apply and category actions remain. Mobile inputs use 16px text,
+touch buttons are larger, the preview permits vertical scrolling, and the editor
+updates only its visible parameter panel during drags. Hex edits coalesce into one
+Undo step; recents capture committed colors. Favorites actions disable without a
+destination. App navigation/Customize targets are enlarged and separated from
+content. Menu taps no longer trigger body gestures or sensor requests.
+
+One isolated browser review at 390×700 verified the reported picker screen without
+an overlay, flow-only pending footer, local Saved feedback, synthetic save failure
+and successful Retry, preserving drafts across tabs, section-isolated saving,
+hex Undo/recents and Favorites destination guards. App navigation stayed open
+after switching modes; measured 40px mode targets and no Customize/nav/content
+overlap. Syntax and built Worker checks passed. Preview:
+docs/previews/mobile-ux-clear-controls.jpg. Production preferences were untouched.
+Physical Safari keyboard/sensor behavior and device touch performance unverified.
+
 ## Unified parameter panels and individual actions — 2026-11-03
 
 Color, Face, Shape, Light, Interaction and Alarm now share the Dither control/picker

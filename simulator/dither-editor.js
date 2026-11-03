@@ -49,7 +49,9 @@ export function createDitherEditor({edit,undo,redo,reset,group=null,apply=null,u
  const endPlane=()=>{if(planeDragging)remember(hsvToHex(hsv));planeDragging=false;};plane.addEventListener('pointerup',endPlane);plane.addEventListener('pointercancel',endPlane);
  plane.addEventListener('keydown',event=>{if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(event.key))return;event.preventDefault();if(event.key==='ArrowLeft')hsv.s=Math.max(0,hsv.s-.01);if(event.key==='ArrowRight')hsv.s=Math.min(1,hsv.s+.01);if(event.key==='ArrowUp')hsv.v=Math.min(1,hsv.v+.01);if(event.key==='ArrowDown')hsv.v=Math.max(0,hsv.v-.01);paintPicker();setColor(hsvToHex(hsv),true);});
  let hueFirst=true;hue.addEventListener('pointerdown',()=>hueFirst=true);hue.addEventListener('keydown',()=>hueFirst=true);hue.addEventListener('input',()=>{hsv.h=Number(hue.value);paintPicker();setColor(hsvToHex(hsv),hueFirst);hueFirst=false;});hue.addEventListener('change',()=>{hueFirst=true;remember(hsvToHex(hsv));});
- hex.addEventListener('input',()=>{hex.setCustomValidity('');if(/^#[0-9a-f]{6}$/i.test(hex.value)){const color=hex.value.toLowerCase();hsv=hexToHsv(color);paintPicker();setColor(color,true);remember(color);}});hex.addEventListener('change',()=>{if(!/^#[0-9a-f]{6}$/i.test(hex.value)){hex.setCustomValidity('Use a six-digit hex color, such as #8b5cf6.');hex.reportValidity();}});
+ let hexFirst=true;hex.autocomplete='off';hex.setAttribute('autocapitalize','off');hex.addEventListener('focus',()=>hexFirst=true);
+ hex.addEventListener('input',()=>{hex.setCustomValidity('');if(/^#[0-9a-f]{6}$/i.test(hex.value)){const color=hex.value.toLowerCase();hsv=hexToHsv(color);paintPicker();setColor(color,hexFirst);hexFirst=false;}});hex.addEventListener('change',()=>{if(!/^#[0-9a-f]{6}$/i.test(hex.value)){hex.setCustomValidity('Use a six-digit hex color, such as #8b5cf6.');hex.reportValidity();}else remember(hex.value.toLowerCase());hexFirst=true;});
+ hex.addEventListener('blur',()=>{if(/^#[0-9a-f]{6}$/i.test(hex.value))remember(hex.value.toLowerCase());hexFirst=true;});
  picker.addEventListener('keydown',event=>{if(event.key==='Escape'){picker.hidden=true;currentKey=null;}});
  const hueRow=el('div','dither-hue-row');
  const eyedropper=button('⌕',async()=>{try{const result=await new window.EyeDropper().open();setColor(result.sRGBHex,true);remember(result.sRGBHex);}catch(error){if(error.name!=='AbortError')eyedropper.title='Screen color picking is unavailable.';}},'Pick a screen color');eyedropper.className='dither-eyedropper';eyedropper.disabled=typeof window.EyeDropper!=='function';eyedropper.dataset.unsupported=String(eyedropper.disabled);if(eyedropper.disabled)eyedropper.title='Screen color picking is unavailable in this browser.';hueRow.append(eyedropper,hue);
@@ -72,7 +74,7 @@ export function createDitherEditor({edit,undo,redo,reset,group=null,apply=null,u
   }else if(f.type==='text'){input=el('input','parameter-text');input.type='text';input.maxLength=12;input.spellcheck=false;let first=true;input.addEventListener('focus',()=>first=true);input.addEventListener('input',()=>{if(/^[\x21-\x7e]{1,12}$/.test(input.value)){edit(f.key,input.value,first);first=false;}});}
   else{input=el('input','dither-toggle');input.type='checkbox';input.addEventListener('change',()=>edit(f.key,input.checked,true));}
   input.id='setting-'+f.key;input.setAttribute('aria-label',f.label);inputs.set(f.key,input);row.append(input);
-  if(undoField&&applyField){const actions=el('div','parameter-field-actions'),u=button('Undo',()=>undoField(actionKey(f.key)),'Undo '+f.label),a=button('Apply',()=>applyField(actionKey(f.key)),'Apply '+f.label);actions.append(u,a);const line=el('div','parameter-line');line.append(row,actions);fieldActions.set(f.key,{line,undo:u,apply:a});}
+  if(undoField&&applyField){const actions=el('div','parameter-field-actions'),u=button('Undo',()=>undoField(actionKey(f.key)),'Undo '+f.label),a=button('Apply',()=>applyField(actionKey(f.key)),'Apply '+f.label),error=el('p','parameter-field-error');error.hidden=true;error.setAttribute('role','status');actions.append(u,a);const line=el('div','parameter-line');line.append(row,actions,error);fieldActions.set(f.key,{line,undo:u,apply:a,error});}
  }
  const appendRow=(parent,key)=>parent.append(fieldActions.get(key)?.line||rows.get(key));
  const order=['ditherWaveColor','ditherBackground','ditherPalette','ditherPattern','ditherPixelSize','ditherColors','ditherScale','ditherSpeed','ditherFrequency','ditherAmplitude','ditherContrast','ditherBrightness','ditherMouse','ditherMouseEffect','ditherMouseRadius','ditherMouseStrength','ditherTrail','ditherClickRipple'];
@@ -80,7 +82,7 @@ export function createDitherEditor({edit,undo,redo,reset,group=null,apply=null,u
  else{for(const f of fields)if(rows.has(f.key))appendRow(custom,f.key);root.append(custom);}
  return {element:root,refresh(s,state){
   settings=s;canEdit=state.canEdit;undoButton.disabled=!canEdit||!state.canUndo;redoButton.disabled=!canEdit||!state.canRedo;resetButton.disabled=!canEdit;
-  if(applyButton)applyButton.disabled=!state.canApply;
+  if(applyButton){applyButton.disabled=!state.canApply;applyButton.textContent=state.savePhase==='saving'?'Saving…':state.savePhase==='saved'?'Saved':state.savePhase==='error'?'Retry':'Apply';}
   for(const [key,b]of presetButtons){b.disabled=!canEdit;b.setAttribute('aria-pressed',String(s.ditherPreset===key));}
   const colors=isDither?activeDitherSpectrum(s,'live'):[],paletted=isDither&&s.ditherPalette!=='none',visible=group?new Set(groupSettingKeys(group.id,state.mode)):null;
   for(const f of fields){const input=inputs.get(f.key);if(!input)continue;let disabled=!canEdit;
@@ -90,7 +92,7 @@ export function createDitherEditor({edit,undo,redo,reset,group=null,apply=null,u
    disabled||=['ditherMouseEffect','ditherMouseRadius','ditherMouseStrength','ditherTrail'].includes(f.key)&&!s.ditherMouse||f.key==='ditherSpeed'&&s.ditherDisableAnimation||f.key==='ditherTransparent'&&paletted;
    input.disabled=disabled;if(outputs.has(f.key))outputs.get(f.key).disabled=disabled;
    rows.get(f.key).hidden=visible?!visible.has(f.key):f.key==='ditherPaletteCount'&&!paletted;
-   const actions=fieldActions.get(f.key);if(actions){actions.line.hidden=rows.get(f.key).hidden;const field=state.fieldState?.(actionKey(f.key))||{};actions.undo.disabled=!canEdit||!field.canUndo;actions.apply.disabled=!field.canApply;}
+   const actions=fieldActions.get(f.key);if(actions){actions.line.hidden=rows.get(f.key).hidden;const field=state.fieldState?.(actionKey(f.key))||{};actions.undo.disabled=!canEdit||!field.canUndo;actions.apply.disabled=!field.canApply;actions.apply.textContent=field.savePhase==='saving'?'Saving…':field.savePhase==='saved'?'Saved':field.savePhase==='error'?'Retry':'Apply';actions.apply.classList.toggle('parameter-saved',field.savePhase==='saved');actions.error.hidden=field.savePhase!=='error';actions.error.textContent=field.error||'';}
   }
   spectrum.replaceChildren();spectrumWrap.hidden=!paletted;
   if(paletted)for(const [index,color]of colors.entries()){const b=colorChip(color,()=>openPicker('ditherPalette'+(index+1),'Spectrum color '+(index+1),color));b.disabled=!canEdit;b.textContent=String(index+1);b.style.color=hexToHsv(color).v>.65?'#121212':'#fff';spectrum.append(b);}

@@ -7,8 +7,10 @@ class Bucket{
  async put(key,text,{onlyIf:c}={}){const old=this.records.get(key);if(c?.etagDoesNotMatch==='*'&&old||c?.etagMatches&&old?.etag!==c.etagMatches)return null;const etag=String(++this.counter);this.records.set(key,{text,etag});return {etag};}
 }
 const env={BUCKET:new Bucket(),MASCOT_OWNER_EMAIL:'fixture@example.test'};
+let failSaveOnce=process.argv.includes('--fail-save-once');
 http.createServer(async(req,res)=>{
  if(req.headers.host!=='127.0.0.1:4175'){res.writeHead(403);return res.end();}
+ if(failSaveOnce&&req.method==='PUT'&&req.url==='/api/design'){failSaveOnce=false;req.resume();res.writeHead(503,{'Content-Type':'application/json'});return res.end(JSON.stringify({error:'Temporary save failure. Your preview is kept. Try again.'}));}
  const chunks=[];for await(const chunk of req)chunks.push(chunk);
  const headers=new Headers(req.headers);headers.set('oai-authenticated-user-id','fixture-owner');headers.set('oai-authenticated-user-email','fixture@example.test');
  const request=new Request('http://127.0.0.1:4175'+req.url,{method:req.method,headers,body:['GET','HEAD'].includes(req.method)?undefined:Buffer.concat(chunks)});

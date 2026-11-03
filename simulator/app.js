@@ -267,7 +267,8 @@ function connect() {
   device.addEventListener('pointerleave', () => {motion.targetX = 0; motion.targetY = 0;setDitherPointer(state.mode,{inside:false,time});});
   device.addEventListener('click', e => {
     if (suppressTap) {suppressTap = false; return;}
-    revealControls(e.target.closest('button') ? true : !device.classList.contains('controls-visible'));
+    if(e.target.closest('button,a,input,select'))return;
+    revealControls(!device.classList.contains('controls-visible'));
   });
   device.addEventListener('keydown', e => {
     if ((e.key === 'Enter' || e.key === ' ') && e.target === device) {
@@ -288,8 +289,8 @@ function connect() {
   });
   device.addEventListener('pointerup', e => {
     clearTimeout(holdTimer);
-    if (e.pointerType === 'touch') void enableTilt();
     if (!pointer || e.pointerId !== pointer.id) return;
+    if (e.pointerType === 'touch') void enableTilt();
     if(holding) {
       holding=false; suppressTap=true; pointer=null; revealControls(true);
       motion.targetX=0; motion.targetY=0;
