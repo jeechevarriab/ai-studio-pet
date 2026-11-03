@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {DESIGN_DEFAULTS,groupSettingKeys,groupSnapshot,restoreGroupSettings,designForGroupApply,editModeValue,resolveModeDesign,undoModeValue,editDitherSpectrum,activeDitherSpectrum,designSignature} from '../simulator/design.js';
+import {DESIGN_DEFAULTS,groupSettingKeys,groupSnapshot,restoreGroupSettings,designForGroupApply,editModeValue,resolveModeDesign,undoModeValue,editDitherSpectrum,activeDitherSpectrum,designSignature,designForDitherEditorApply} from '../simulator/design.js';
 
 test('panel Apply changes only the selected category and page',()=>{
  let draft=editModeValue(DESIGN_DEFAULTS,{},'work','eyeSize',120);draft=editModeValue(draft,{},'work','bodyWidth',350);draft=editModeValue(draft,{},'surf','eyeSize',80);
@@ -23,4 +23,9 @@ test('individual parameter Undo preserves other edits, including later palette s
 
 test('Undo to an inherited value does not leave a false dirty state',()=>{
  const history={};const changed=editModeValue(DESIGN_DEFAULTS,history,'live','eyeSize',115);const undone=undoModeValue(changed,history,'live','eyeSize');assert.equal(designSignature(undone),designSignature(DESIGN_DEFAULTS));
+});
+
+test('Dither panel Apply saves the page background and effect without touching other pages or unrelated drafts',()=>{
+ let draft=editModeValue(DESIGN_DEFAULTS,{},'work','workBackground','#123456');draft=editModeValue(draft,{},'work','colorMode','dither');draft=editModeValue(draft,{},'work','ditherBrightness',.15);draft=editModeValue(draft,{},'work','eyeSize',120);draft=editModeValue(draft,{},'sleep','sleepBackground','#abcdef');
+ const saved=designForDitherEditorApply(DESIGN_DEFAULTS,draft,'work');assert.equal(saved.workBackground,'#123456');assert.equal(saved.sleepBackground,DESIGN_DEFAULTS.sleepBackground);assert.equal(resolveModeDesign(saved,'work').colorMode,'dither');assert.equal(resolveModeDesign(saved,'work').ditherBrightness,.15);assert.equal(resolveModeDesign(saved,'work').eyeSize,100);
 });

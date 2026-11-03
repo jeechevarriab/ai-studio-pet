@@ -57,14 +57,17 @@ export function createDitherEditor({edit,undo,redo,reset,group=null,apply=null,u
  const eyedropper=button('⌕',async()=>{try{const result=await new window.EyeDropper().open();setColor(result.sRGBHex,true);remember(result.sRGBHex);}catch(error){if(error.name!=='AbortError')eyedropper.title='Screen color picking is unavailable.';}},'Pick a screen color');eyedropper.className='dither-eyedropper';eyedropper.disabled=typeof window.EyeDropper!=='function';eyedropper.dataset.unsupported=String(eyedropper.disabled);if(eyedropper.disabled)eyedropper.title='Screen color picking is unavailable in this browser.';hueRow.append(eyedropper,hue);
  picker.append(pickerHeader,plane,hueRow,hexRow,suggestions,recentBox);
  function openPicker(key,name,color){currentKey=key;currentLabel=name;picker.hidden=false;pickerTitle.textContent=name;copy.textContent='⧉';try{recent=JSON.parse(localStorage.getItem('mascot-recent-colors')||'[]').filter(v=>/^#[0-9a-f]{6}$/i.test(v)).slice(0,8);renderRecent();}catch{}hsv=hexToHsv(color);paintPicker();const row=rows.get(key)||spectrumWrap;(row.closest('.parameter-line')||row).after(picker);}
- const fields=group?.fields||DESIGN_GROUPS.find(g=>g.id==='dither').fields;
+ const appBackgroundKey=key=>/^(live|work|surf|sleep)Background$/.test(key);
+ const effectColor=key=>['ditherWaveColor','ditherBackground'].includes(key);
+ const fields=group?.fields||[...DESIGN_GROUPS.find(g=>g.id==='colors').fields.filter(f=>appBackgroundKey(f.key)).map(f=>({...f,label:'App background'})),...DESIGN_GROUPS.find(g=>g.id==='dither').fields.map(f=>f.key==='ditherBackground'?{...f,label:'Effect background'}:f)];
  const colorRows=new Map();
  for(const f of fields){
   if(f.key==='menuSeconds'||isDither&&(f.key==='ditherPreset'||f.key==='ditherPaletteCount'||/^ditherPalette\d+$/.test(f.key)))continue;
-  const row=el('div','dither-control'),text=el('label','',f.key==='ditherPalette'?'Palette':f.label);text.htmlFor='setting-'+f.key;row.append(text);rows.set(f.key,row);
+  const inputId=(isDither&&appBackgroundKey(f.key)?'setting-dither-app-':'setting-')+f.key;
+  const row=el('div','dither-control'),text=el('label','',f.key==='ditherPalette'?'Palette':f.label);text.htmlFor=inputId;row.append(text);rows.set(f.key,row);
   let input;
   if(f.type==='color'){
-   input=button('',()=>{const colors=isDither?activeDitherSpectrum(settings,'live'):[],palette=isDither&&settings.ditherPalette!=='none';const key=palette?(f.key==='ditherWaveColor'?'ditherPalette'+colors.length:'ditherPalette1'):f.key;openPicker(key,f.label,palette?(f.key==='ditherWaveColor'?colors.at(-1):colors[0]):settings[f.key]);},'Edit '+f.label);input.className='dither-color-value';const swatch=el('i'),code=el('span');input.append(swatch,code);colorRows.set(f.key,{swatch,code});
+   input=button('',()=>{const colors=isDither?activeDitherSpectrum(settings,'live'):[],palette=isDither&&effectColor(f.key)&&settings.ditherPalette!=='none';const key=palette?(f.key==='ditherWaveColor'?'ditherPalette'+colors.length:'ditherPalette1'):f.key;openPicker(key,f.label,palette?(f.key==='ditherWaveColor'?colors.at(-1):colors[0]):settings[f.key]);},'Edit '+f.label);input.className='dither-color-value';const swatch=el('i'),code=el('span');input.append(swatch,code);colorRows.set(f.key,{swatch,code});
   }else if(f.type==='select'){
    input=el('select');for(const value of f.options){const text=f.key==='colorMode'?({cloud:'Cloud · Original',dither:'Dither'})[value]:value.startsWith('touch-')?['Orbit','Daydream','Glee','Lilt','Prism','Ripple','Intent','Sideglance','Soft wink','Starlit'][Number(value.slice(6))]:value==='auto'?'Follow activity':label(value);const o=el('option','',text);o.value=value;input.append(o);}input.addEventListener('change',()=>edit(f.key,input.value,true));
   }else if(f.type==='range'){
@@ -73,11 +76,11 @@ export function createDitherEditor({edit,undo,redo,reset,group=null,apply=null,u
    const number=el('input','dither-number');number.type='number';number.min=f.min;number.max=f.max;number.step=f.step;number.setAttribute('aria-label',f.label+' value');let numberFirst=true;number.addEventListener('focus',()=>numberFirst=true);const numberInput=()=>{if(number.value!==''&&number.checkValidity()){edit(rangeKey(),Number(number.value),numberFirst);numberFirst=false;}};number.addEventListener('input',numberInput);number.addEventListener('change',()=>{numberInput();if(!number.checkValidity())number.reportValidity();numberFirst=true;});outputs.set(f.key,number);row.append(number);row.classList.add('dither-range-row');
   }else if(f.type==='text'){input=el('input','parameter-text');input.type='text';input.maxLength=12;input.spellcheck=false;let first=true;input.addEventListener('focus',()=>first=true);input.addEventListener('input',()=>{if(/^[\x21-\x7e]{1,12}$/.test(input.value)){edit(f.key,input.value,first);first=false;}});}
   else{input=el('input','dither-toggle');input.type='checkbox';input.addEventListener('change',()=>edit(f.key,input.checked,true));}
-  input.id='setting-'+f.key;input.setAttribute('aria-label',f.label);inputs.set(f.key,input);row.append(input);
+  input.id=inputId;input.setAttribute('aria-label',f.label);inputs.set(f.key,input);row.append(input);
   if(undoField&&applyField){const actions=el('div','parameter-field-actions'),u=button('Undo',()=>undoField(actionKey(f.key)),'Undo '+f.label),a=button('Apply',()=>applyField(actionKey(f.key)),'Apply '+f.label),error=el('p','parameter-field-error');error.hidden=true;error.setAttribute('role','status');actions.append(u,a);const line=el('div','parameter-line');line.append(row,actions,error);fieldActions.set(f.key,{line,undo:u,apply:a,error});}
  }
  const appendRow=(parent,key)=>parent.append(fieldActions.get(key)?.line||rows.get(key));
- const order=['ditherWaveColor','ditherBackground','ditherPalette','ditherPattern','ditherPixelSize','ditherColors','ditherScale','ditherSpeed','ditherFrequency','ditherAmplitude','ditherContrast','ditherBrightness','ditherMouse','ditherMouseEffect','ditherMouseRadius','ditherMouseStrength','ditherTrail','ditherClickRipple'];
+ const order=['liveBackground','workBackground','surfBackground','sleepBackground','ditherWaveColor','ditherBackground','ditherPalette','ditherPattern','ditherPixelSize','ditherColors','ditherScale','ditherSpeed','ditherFrequency','ditherAmplitude','ditherContrast','ditherBrightness','ditherMouse','ditherMouseEffect','ditherMouseRadius','ditherMouseStrength','ditherTrail','ditherClickRipple'];
  if(isDither){for(const key of order){appendRow(custom,key);if(key==='ditherPalette')custom.append(spectrumWrap);}const more=el('details','dither-more');more.append(el('summary','','More options'));for(const f of fields)if(rows.has(f.key)&&!order.includes(f.key))appendRow(more,f.key);custom.append(more);root.append(presetBox,custom);}
  else{for(const f of fields)if(rows.has(f.key))appendRow(custom,f.key);root.append(custom);}
  return {element:root,refresh(s,state){
@@ -86,17 +89,18 @@ export function createDitherEditor({edit,undo,redo,reset,group=null,apply=null,u
   for(const [key,b]of presetButtons){b.disabled=!canEdit;b.setAttribute('aria-pressed',String(s.ditherPreset===key));}
   const colors=isDither?activeDitherSpectrum(s,'live'):[],paletted=isDither&&s.ditherPalette!=='none',visible=group?new Set(groupSettingKeys(group.id,state.mode)):null;
   for(const f of fields){const input=inputs.get(f.key);if(!input)continue;let disabled=!canEdit;
-   if(f.type==='color'){const color=paletted?(f.key==='ditherWaveColor'?colors.at(-1):colors[0]):s[f.key];colorRows.get(f.key).swatch.style.background=color;colorRows.get(f.key).code.textContent=color;disabled||=f.key==='ditherBackground'&&s.ditherTransparent&&!paletted;}
+   if(f.type==='color'){const color=paletted&&effectColor(f.key)?(f.key==='ditherWaveColor'?colors.at(-1):colors[0]):s[f.key];colorRows.get(f.key).swatch.style.background=color;colorRows.get(f.key).code.textContent=color;disabled||=f.key==='ditherBackground'&&s.ditherTransparent&&!paletted;}
    else if(f.type==='checkbox')input.checked=s[f.key];else input.value=f.key==='ditherColors'&&paletted?colors.length:s[f.key];
    if(outputs.has(f.key)){const max=f.key==='ditherColors'&&paletted?8:f.max,value=f.key==='ditherColors'&&paletted?colors.length:s[f.key];input.max=max;input.value=value;outputs.get(f.key).max=max;outputs.get(f.key).value=value;outputs.get(f.key).disabled=!canEdit;rows.get(f.key).style.setProperty('--range-progress',((value-f.min)/(max-f.min)*100)+'%');}
    disabled||=['ditherMouseEffect','ditherMouseRadius','ditherMouseStrength','ditherTrail'].includes(f.key)&&!s.ditherMouse||f.key==='ditherSpeed'&&s.ditherDisableAnimation||f.key==='ditherTransparent'&&paletted;
    input.disabled=disabled;if(outputs.has(f.key))outputs.get(f.key).disabled=disabled;
-   rows.get(f.key).hidden=visible?!visible.has(f.key):f.key==='ditherPaletteCount'&&!paletted;
+   rows.get(f.key).hidden=visible?!visible.has(f.key):appBackgroundKey(f.key)?f.key!==(state.mode||'live')+'Background':f.key==='ditherPaletteCount'&&!paletted;
    const actions=fieldActions.get(f.key);if(actions){actions.line.hidden=rows.get(f.key).hidden;const field=state.fieldState?.(actionKey(f.key))||{};actions.undo.disabled=!canEdit||!field.canUndo;actions.apply.disabled=!field.canApply;actions.apply.textContent=field.savePhase==='saving'?'Saving…':field.savePhase==='saved'?'Saved':field.savePhase==='error'?'Retry':'Apply';actions.apply.classList.toggle('parameter-saved',field.savePhase==='saved');actions.error.hidden=field.savePhase!=='error';actions.error.textContent=field.error||'';}
   }
   spectrum.replaceChildren();spectrumWrap.hidden=!paletted;
   if(paletted)for(const [index,color]of colors.entries()){const b=colorChip(color,()=>openPicker('ditherPalette'+(index+1),'Spectrum color '+(index+1),color));b.disabled=!canEdit;b.textContent=String(index+1);b.style.color=hexToHsv(color).v>.65?'#121212':'#fff';spectrum.append(b);}
   if(currentKey&&visible&&!visible.has(currentKey)){picker.hidden=true;currentKey=null;}
+  if(currentKey&&isDither&&appBackgroundKey(currentKey)&&currentKey!==(state.mode||'live')+'Background'){picker.hidden=true;currentKey=null;}
   if(currentKey){if(isDither&&/^ditherPalette\d+$/.test(currentKey)){const index=Number(currentKey.slice(13))-1;if(index>=colors.length||!paletted){picker.hidden=true;currentKey=null;}else if(!planeDragging&&document.activeElement!==hue&&document.activeElement!==hex){hsv=hexToHsv(colors[index]);paintPicker();}}
    else if(!planeDragging&&document.activeElement!==hue&&document.activeElement!==hex){hsv=hexToHsv(s[currentKey]);paintPicker();}}
   for(const input of picker.querySelectorAll('input,button'))input.disabled=!canEdit||input.dataset.unsupported==='true';plane.tabIndex=canEdit?0:-1;

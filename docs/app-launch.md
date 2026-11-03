@@ -39,3 +39,5 @@ restrictions, manifest/icon routes and PNG dimensions. Chrome desktop and
 390 × 844 viewport checked: black surround, no playground, device centered,
 no horizontal overflow; touch-style click reveals menu and WORK switches.
 No app-origin console error was observed; browser extension warnings were present.
+
+Published update 2026-11-03: version 26 adds per-page App background directly to Dither, separate from Effect background. Source b94cbbb39c1aad25cb396de0ee3ab9401940962a; deployment appgdep_6aea6e3287a08191aff4d0a2be85b2ae succeeded. Existing public URL and access unchanged.

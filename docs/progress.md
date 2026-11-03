@@ -300,3 +300,6 @@ buttons and no Customize/nav/content overlap. Syntax and built Worker validation
 passed. Preview: docs/previews/mobile-ux-clear-controls.jpg. All test writes used
 the disposable loopback owner/bucket; no production preferences or existing user
 drafts changed. Physical Safari keyboard/sensors and hardware touch unverified.
+
+## 2026-11-03 — Dither app background
+Added App background to the selected mode in Dither using the shared picker and per-row Undo/Apply. Renamed texture Background to Effect background. Group Undo/Redo, Reset and Apply Dither look include the selected page background while preserving other pages and unrelated drafts. Six focused parameter-panel regressions passed; browser checks confirmed group Undo/Redo, individual Undo/Apply, matching Color control, separate LIVE/WORK values and reload persistence. Worker build/artifact validation passed. Published version 26, source b94cbbb39c1aad25cb396de0ee3ab9401940962a, deployment appgdep_6aea6e3287a08191aff4d0a2be85b2ae. Preview: docs/previews/dither-app-background.jpg. Synthetic test settings only; physical phone unverified.

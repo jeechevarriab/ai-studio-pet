@@ -55,6 +55,7 @@ export const DESIGN_GROUPS=[
 ];
 export const DESIGN_FIELDS=DESIGN_GROUPS.flatMap(group=>group.fields);
 export const DITHER_SETTING_KEYS=DESIGN_FIELDS.filter(f=>f.key.startsWith('dither')).map(f=>f.key);
+export const ditherEditorKeys=mode=>['colorMode',...DITHER_SETTING_KEYS,mode+'Background'];
 export const DESIGN_DEFAULTS={...Object.fromEntries(DESIGN_FIELDS.map(f=>[f.key,f.value])),modeOverrides:{}};
 export const DESIGN_MODES=['live','work','surf','sleep'];
 export const scopedSetting=key=>key!=='studioAuto'&&!key.startsWith('alarm')&&!/^(live|work|surf|sleep)(Color|Background|Eye)$/.test(key);
@@ -121,6 +122,7 @@ export function restoreGroupSettings(design,mode,groupId,snapshot){
  let next=design;for(const key of groupSettingKeys(groupId,mode))next=writeModeSetting(next,mode,key,snapshot[key]);return next;
 }
 export const designForGroupApply=(applied,draft,mode,groupId)=>restoreGroupSettings(applied,mode,groupId,groupSnapshot(draft,mode,groupId));
+export function designForDitherEditorApply(applied,draft,mode){let next=applied;for(const key of ditherEditorKeys(mode))next=writeModeSetting(next,mode,key,modeSetting(draft,mode,key));return next;}
 // Favorites carry appearance only: never alarms, sensor permissions or STUDIO behavior.
 export const FAVORITE_KEYS=DESIGN_FIELDS.filter(f=>scopedSetting(f.key)&&!['sensors','pickup','greetingSeconds','zoom','menuSeconds','holdMs'].includes(f.key)).map(f=>f.key);
 export function captureFavoriteLook(design,mode){
