@@ -353,9 +353,9 @@ export function renderSceneV2(ctx, {activity, definition, time = 0, reducedMotio
     ctx.scale(1 + attention * ((custom.zoom??1.3)-1), 1 + attention * ((custom.zoom??1.3)-1));
     ctx.translate(-205, -249);
     const bob = breath * e.bobPx * 1.7*(custom.float??1);
-    const halo = ctx.createRadialGradient(205, 248, 30, 205, 248, 299);
-    halo.addColorStop(0, e.color + '10'); halo.addColorStop(1, e.color + '00');
-    ctx.fillStyle = halo; ctx.fillRect(0, 0, 410, 502);
+    // Keep the page background flat. A low-alpha, canvas-wide halo reveals
+    // gradient bands and its transformed rectangle on pale mobile screens.
+    // The mascot retains its own soft material mask and depth lighting below.
     ctx.translate(0, bob);
     const body=floatingBody(paintedDefinition,e.color,t,activity.mode||'live',reducedMotion);
     softBlob(ctx,litBody(body,paintedDefinition,motion,t,reducedMotion,activity.mode||'live'),t,reducedMotion,custom.liquid??1);

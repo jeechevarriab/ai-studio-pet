@@ -247,3 +247,18 @@ color picker saving and clearing dirty state. 390px preview has no horizontal
 overflow; screenshot docs/previews/parameter-panels-mobile.jpg. All browser writes
 used a synthetic loopback owner/bucket. Production preferences and existing drafts
 were preserved. Physical phone and OS-specific native popup styling unverified.
+
+## Pale mobile background bands — 2026-11-03
+
+Published Sites version 23, source 1b1108ee0eeeed861cac9c2b199bd1877da99c9c;
+deployment appgdep_6ae9ea015828819191bd9de1187d42c2 succeeded. Removed the separate
+low-alpha canvas-wide halo drawn inside the moving mascot transform. Its gradient
+bands and transformed rectangle became visible above the mascot on pale surfaces.
+Kept the flat page color, material mask, texture, depth lighting and character
+movement. No saved design, control, permission or infrastructure change.
+
+One focused browser comparison used the same 390px WORK scene in the synthetic
+loopback fixture. Blank-region RGB ranges changed from 4/3/2 before to 0/0/0 after,
+and the affected background is visibly flat. Saved mobile-lines-before.jpg and
+mobile-lines-fixed.jpg in docs/previews. Worker build/artifact validation passed.
+Physical iPhone display/compositing remains unverified.
