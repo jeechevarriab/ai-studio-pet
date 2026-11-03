@@ -1,7 +1,7 @@
 import {MODES, initialState, validateDefinitions, validateRules, deriveActivity, swipeMode, stepTime, formatHour, ease, createPickupDetector} from './engine.js';
 import {renderScene} from './renderer.js';
 import {setDitherPointer} from './color-finishes.js';
-import {DESIGN_DEFAULTS,designDefinition,resolveModeDesign} from './design.js';
+import {DESIGN_DEFAULTS,designDefinition,resolveModeDesign,formatAlarmTime} from './design.js';
 import {connectDesignEditor} from './editor.js';
 import {connectStudio,paintStudio} from './studio.js';
 
@@ -14,7 +14,7 @@ let designReady=mascotVersion==='v1';
 document.documentElement.classList.toggle('mascot-v2', mascotVersion === 'v2');
 let state = initialState(), definition, original, rules, activity, transition = null, pointer = null;
 let time = 0, lastTimestamp = 0, previousStatus = '';
-let controlsTimer, suppressTap = false, tiltAttempted = false, tiltOrigin = null, lastPointerMotion = 0;
+let suppressTap = false, tiltAttempted = false, tiltOrigin = null, lastPointerMotion = 0;
 let attention = 0, attentionTarget = 0, activeNotice = null;
 let greetingUntil=0,greeting=0,motionSeenAt=-Infinity;
 const pickupMotion=createPickupDetector(),pickupTilt=createPickupDetector();
@@ -33,6 +33,8 @@ let surfData = null, surfPending = false;
 function syncPlayPanel() {
   $('play-panel').hidden = mascotVersion !== 'v2' || state.mode !== 'surf' || !$('device').classList.contains('controls-visible') || !!activeNotice;
   $('studio-panel').hidden=mascotVersion!=='v2'||state.mode!=='work'||!$('device').classList.contains('controls-visible')||!!activeNotice;
+  $('sleep-panel').hidden=mascotVersion!=='v2'||state.mode!=='sleep'||!$('device').classList.contains('controls-visible')||!!activeNotice;
+  $('alarm-time').textContent=formatAlarmTime(customDesign);
 }
 
 async function loadSurf() {
@@ -92,7 +94,6 @@ function cancelHold() {
 
 function revealControls(visible = true) {
   if (mascotVersion !== 'v2') return;
-  clearTimeout(controlsTimer);
   $('device').classList.toggle('controls-visible', visible);
   attentionTarget = visible ? 1 : 0;
   if (!visible) activeNotice = null;
@@ -103,13 +104,7 @@ function revealControls(visible = true) {
     $('message-title').textContent = activeNotice.title;
     $('message-body').textContent = activeNotice.body;
   }
-  if (activeNotice || (visible && (state.mode === 'surf'||state.mode==='work'))) return;
-  if (visible) controlsTimer = setTimeout(() => {
-    if ($('device').contains(document.activeElement) && document.activeElement.matches('button')) return revealControls();
-    $('device').classList.remove('controls-visible');
-    attentionTarget = 0;
-    syncPlayPanel();
-  }, customDesign.menuSeconds*1000);
+
 }
 
 async function enableTilt() {
@@ -178,7 +173,7 @@ function changeMode(mode,fromStudio=false) {
   transition = reducedMotion.matches ? null : {from: {...activity}, started: performance.now(), direction: MODES.indexOf(mode) > MODES.indexOf(state.mode) ? 1 : -1};
   activeNotice = null; touchEye = -1; previousEye = -1; state.mode = mode;if(mascotVersion==='v2')restoreModeDesign();updateUI();
   document.dispatchEvent(new CustomEvent('mascot-mode-change',{detail:{mode}}));
-  revealControls();
+  revealControls($('device').classList.contains('controls-visible'));
 }
 
 function frame(timestamp) {
@@ -223,7 +218,7 @@ function connect() {
     state.event = event; updateUI();
     if (mascotVersion === 'v2') {
       activeNotice = event === 'none' ? null : {title: event === 'success' ? 'Task complete' : 'Needs attention', body: state.agent + (event === 'success' ? ' finished its task.' : ' is trying again.')};
-      revealControls(event !== 'none');
+      if($('device').classList.contains('controls-visible'))revealControls(true);
     }
   });
   $('pause').addEventListener('click', () => {state.paused = !state.paused; updateUI();});
@@ -303,7 +298,6 @@ function connect() {
     }
     suppressTap = Math.hypot(e.clientX - pointer.x, e.clientY - pointer.y) > 12;
     changeMode(swipeMode(state.mode, e.clientX - pointer.x, e.clientY - pointer.y, device.getBoundingClientRect().width)); pointer = null;
-    if (suppressTap) revealControls();
     if (device.hasPointerCapture(e.pointerId)) device.releasePointerCapture(e.pointerId);
   });
   device.addEventListener('pointercancel', cancelHold);
@@ -318,7 +312,7 @@ try {
   definition = validateDefinitions(await characterResponse.json()); original = structuredClone(definition);
   rules = validateRules(await behaviorResponse.json());
   connect(); updateUI(); $('load-status').textContent = ''; requestAnimationFrame(frame);
-  if(mascotVersion==='v2')void connectDesignEditor({preview:setDesign,apply:setDesign,mode:value=>{changeMode(value);revealControls(false);}}).then(result=>{if(!result.loaded)$('load-status').textContent=result.error;});
+  if(mascotVersion==='v2')void connectDesignEditor({preview:setDesign,apply:setDesign,mode:value=>changeMode(value)}).then(result=>{if(!result.loaded)$('load-status').textContent=result.error;});
   if(mascotVersion==='v2')connectStudio({receive:report=>{
     studioReport=report;
     const active=report.online&&report.agents.some(a=>a.status==='working'||a.status==='attention');

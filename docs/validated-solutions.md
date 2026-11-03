@@ -35,3 +35,7 @@ Problem: initial render preceded saved-design loading and briefly displayed fact
 ## Fixed approved restore point — 2026-11-02
 
 For Return to Default, capture a validated confirmed design before publishing the randomizer. Store an explicit versioned design-only restore point rather than reading the latest random state or reverting to factory defaults. Restore and Apply only the selected mode's scoped fields and its named colors/eye color; retain unrelated drafts and other modes. Evidence: cloud-default.test.mjs and browser Randomize/Return-to-Default check passed as part of 41 tests. Scope: original Cloud design revision 101, not a general design history service.
+
+## Preserve UI visibility across page navigation — 2026-11-03
+
+Root cause: changeMode and swipe-end unconditionally revealed controls, and LIVE/SLEEP used an auto-hide timer. Preserve controls-visible during navigation and update page panels from that state; reserve UI toggling for direct activation. Remove the automatic hide timer when the owner requests persistent UI. Evidence: browser keyboard page changes retained hidden and visible states, a real click activated UI, and LIVE remained open past the old timeout. Native slow drag exercised long press; physical iPhone swipe timing is not verified. Alarm-time formatting/validation and exclusion from appearance reset are covered in alarm-preview.test.mjs; no ringing/background alarm implementation is claimed.

@@ -83,6 +83,7 @@ export async function connectDesignEditor({preview,apply,mode}){
     actions.append(randomButton,undoRandomButton,applyRandomButton);section.append(actions);
    }
    for(const f of group.fields){
+    if(f.key==='menuSeconds')continue;
     const row=document.createElement('div');row.className='editor-setting';const label=document.createElement('label');label.htmlFor='setting-'+f.key;label.textContent=f.label;
     const input=document.createElement(f.type==='select'?'select':'input');input.id='setting-'+f.key;if(f.type!=='select')input.type=f.type;input.setAttribute('aria-label',f.label);
     if(f.type==='select')for(const value of f.options){const o=document.createElement('option');o.value=value;o.textContent=f.key==='colorMode'?({cloud:'Cloud · Original',dither:'Dither'})[value]:f.key==='ditherPattern'?({bayer:'Bayer 8×8',bayer4:'Bayer 4×4',bayer2:'Bayer 2×2',halftone:'Halftone',lines:'Lines',crosshatch:'Crosshatch',noise:'Noise',none:'None'})[value]:value==='gameboy'?'Game Boy':value.startsWith('touch-')?['Orbit','Daydream','Glee','Lilt','Prism','Ripple','Intent','Sideglance','Soft wink','Starlit'][Number(value.slice(6))]:value==='auto'?'Follow activity':value[0].toUpperCase()+value.slice(1);input.append(o);}

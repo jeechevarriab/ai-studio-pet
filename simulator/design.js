@@ -30,6 +30,9 @@ export const DESIGN_GROUPS=[
   range('ditherDetail','Render detail',1,1,2,.25),range('ditherPaletteCount','Custom palette colors',4,2,8),
   ...['#06121f','#173d5c','#5f9ec7','#e4f3ff','#7f5af0','#e8aaff','#ffd08a','#fff9e6'].map((value,i)=>color('ditherPalette'+(i+1),'Palette color '+(i+1),value))
  ]},
+ {id:'alarm',label:'Alarm',description:'SLEEP alarm time. Time setting only for now; ringing is not enabled.',fields:[
+  range('alarmHour','Alarm hour',7,1,12),range('alarmMinute','Alarm minute',0,0,59),choice('alarmMeridiem','Alarm AM / PM','AM',['AM','PM'])
+ ]},
  {id:'face',label:'Face',description:'One character size, across every expression.',fields:[
   {key:'expression',label:'Eye expression',type:'select',value:'auto',options:['auto','idle','happy','focused','sleeping','touch-0','touch-1','touch-2','touch-3','touch-4','touch-5','touch-6','touch-7','touch-8','touch-9']},
   range('eyeSize','Eye size · %',100,70,130),range('characterSize','Character size · %',100,70,130),
@@ -54,13 +57,15 @@ export const DESIGN_FIELDS=DESIGN_GROUPS.flatMap(group=>group.fields);
 export const DITHER_SETTING_KEYS=DESIGN_FIELDS.filter(f=>f.key.startsWith('dither')).map(f=>f.key);
 export const DESIGN_DEFAULTS={...Object.fromEntries(DESIGN_FIELDS.map(f=>[f.key,f.value])),modeOverrides:{}};
 export const DESIGN_MODES=['live','work','surf','sleep'];
-export const scopedSetting=key=>key!=='studioAuto'&&!/^(live|work|surf|sleep)(Color|Background|Eye)$/.test(key);
+export const scopedSetting=key=>key!=='studioAuto'&&!key.startsWith('alarm')&&!/^(live|work|surf|sleep)(Color|Background|Eye)$/.test(key);
+export const formatAlarmTime=settings=>`${settings.alarmHour??7}:${String(settings.alarmMinute??0).padStart(2,'0')} ${settings.alarmMeridiem??'AM'}`;
 export function validateDesign(input){
  if(!input||typeof input!=='object'||Array.isArray(input)||Object.keys(input).some(k=>!Object.hasOwn(DESIGN_DEFAULTS,k)))throw Error('Unknown design setting');
  input={...input};if(input.colorMode)input.colorMode=({aurora:'cloud',iridescence:'cloud',bends:'cloud',silk:'cloud',boiling:'cloud',paper:'cloud'})[input.colorMode]||input.colorMode;
  const result={...DESIGN_DEFAULTS};
  for(const f of DESIGN_FIELDS){if(!Object.hasOwn(input,f.key))continue;const v=input[f.key];
   if(f.type==='range'&&(!Number.isFinite(v)||v<f.min||v>f.max))throw Error('Invalid '+f.label);
+  if(['alarmHour','alarmMinute'].includes(f.key)&&!Number.isInteger(v))throw Error('Use whole numbers for alarm time');
   if(f.type==='checkbox'&&typeof v!=='boolean')throw Error('Invalid '+f.label);
   if(f.type==='color'&&(typeof v!=='string'||!/^#[0-9a-f]{6}$/i.test(v)))throw Error('Invalid '+f.label);
   if(f.type==='text'&&(typeof v!=='string'||v.length<1||v.length>12||!/^[\x21-\x7e]+$/.test(v)))throw Error('Use 1–12 printable characters');
