@@ -1,5 +1,26 @@
 # Companion editor and STUDIO activity
 
+## Unified parameter panels and individual actions — 2026-11-03
+
+Color, Face, Shape, Light, Interaction and Alarm now share the Dither control/picker
+implementation. Every mode uses the same compact rows, sliders with numeric entry,
+switches, text/select controls and HSV picker. Group headers expose Reset, Undo,
+Redo and Apply; each parameter also has its own Undo/Apply. Scoped Apply retains
+other drafts and pages. Palette endpoint Apply includes the seeded palette needed
+to reproduce its preview. Individual shade Undo preserves other changed shades.
+Dark select/option colors and color-scheme are explicit. Alarm remains shared.
+
+The same browser test caught redundant inherited-value overrides being treated as
+unsaved after Undo. Signature comparison now ignores those redundant overrides.
+Eleven focused tests cover group isolation, Reset/Undo, per-field preservation,
+palette edits, shared alarm and dirty-state correctness. Existing API auth and
+design/favorites/relay checks passed. Browser traversed all 28 category/mode views,
+exercised independent Face and Dither actions, group Apply, page isolation, color
+picker saving and 390px no-overflow layout. Screenshot:
+docs/previews/parameter-panels-mobile.jpg. All writes were synthetic fixture data;
+production preferences and existing browser drafts were preserved. Physical phone
+touch and native OS dropdown popup rendering remain unverified.
+
 ## Dither spectrum and Undo — 2026-11-03
 
 The owner's supplied Presets / Customize and color-picker screenshots govern the

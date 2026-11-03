@@ -227,3 +227,23 @@ layout without horizontal overflow. Saved dither-picker.jpg and dither-controls.
 in docs/previews. Browser experiments used only a loopback synthetic owner/bucket;
 no production settings were written and the owner's existing browser drafts were
 left untouched. Physical iPhone touch and native eyedropper execution unverified.
+
+## Unified parameter UI, individual actions and dark selects — 2026-11-03
+
+Published Sites version 22, source 54ef60d7849c8aef01822a4192d5b3634c3c6bf5;
+deployment appgdep_6ae9e873086c81918992c4b46edca955 succeeded. Reused the compact
+Dither panel and full HSV picker for Color, Face, Shape, Light, Interaction and
+Alarm in every mode. Each group has Reset/Undo/Redo/Apply; every parameter has
+individual Undo/Apply. Group saves affect only their category and page; individual
+saves preserve unrelated drafts. Palette dependencies remain atomic, and undoing
+one shade preserves later shade changes. Alarm is still shared. Select controls
+and options declare black backgrounds, white text and dark color-scheme.
+
+Fixed redundant inherited-value overrides causing false pending state after Undo.
+Eleven focused model/per-mode/palette/Undo/save tests and existing hosted API auth,
+design/favorites/relay checks passed. Browser traversed all 28 mode/category views,
+verified individual Face and Dither Undo, category Apply, page isolation, shared
+color picker saving and clearing dirty state. 390px preview has no horizontal
+overflow; screenshot docs/previews/parameter-panels-mobile.jpg. All browser writes
+used a synthetic loopback owner/bucket. Production preferences and existing drafts
+were preserved. Physical phone and OS-specific native popup styling unverified.

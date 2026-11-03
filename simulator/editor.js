@@ -1,5 +1,5 @@
 import {DESIGN_GROUPS,DESIGN_DEFAULTS,DESIGN_MODES,FAVORITE_KEYS,captureFavoriteLook,applyFavoriteLook,DITHER_SETTING_KEYS,validateDesign,editModeValue,undoModeValue,designForModeApply,modeSetting,settingHistoryKey,reconcileSavedDesign,randomizeDither,restoreDitherRandomization,loadInitialDesign,cloudSettingKeys,randomizeCloud,restoreCloudRandomization,defaultSettingKeys,restoreCloudDefault} from './design.js';
-import {editDitherSpectrum,resolveModeDesign,designSignature} from './design.js';
+import {editDitherSpectrum,resolveModeDesign,designSignature,groupSettingKeys,groupSnapshot,restoreGroupSettings,designForGroupApply,DITHER_SPECTRUM_KEYS} from './design.js';
 import {createDitherEditor} from './dither-editor.js';
 export async function connectDesignEditor({preview,apply,mode}){
  const editing=location.pathname==='/customize';
@@ -16,12 +16,28 @@ export async function connectDesignEditor({preview,apply,mode}){
  let favorites={revision:0,items:[]},favoritesLoaded=false,favoritesBusy=false,favoriteList=null,favoriteName=null,favoriteSave=null,favoriteReload=null,undoFavorite=null,favoriteSnapshot=null,activeGroup='colors',targetsTouched=false;
  const favoriteTargets=new Map(),panels=new Map(),tabButtons=new Map();
  let ditherEditor=null,ditherHistory={},pendingDitherStart=null;
+ const parameterEditors=new Map();let parameterHistory={},pendingParameterStart={};
+ const parameterStack=id=>parameterHistory[(id==='alarm'?'shared':selectedMode)+'/'+id]||=({undo:[],redo:[]});
+ function changeParameter(group,key,value,newStep=true){
+  if(loading||saving)return;try{
+   if(newStep)pendingParameterStart[group.id]={mode:selectedMode,snapshot:groupSnapshot(draft,selectedMode,group.id)};
+   const next=editModeValue(draft,pendingParameterStart[group.id]?.mode===selectedMode?history:{},selectedMode,key,value);if(designSignature(next)===designSignature(draft))return;
+   if(pendingParameterStart[group.id]?.mode===selectedMode){const stack=parameterStack(group.id);stack.undo.push(pendingParameterStart[group.id].snapshot);if(stack.undo.length>50)stack.undo.shift();stack.redo=[];delete pendingParameterStart[group.id];}
+   draft=next;preview(draft);refresh();notify('Previewing '+group.label.toLowerCase()+' changes. Apply this panel to save.');
+  }catch(error){notify(error.message);}
+ }
+ function stepParameter(group,direction){const stack=parameterStack(group.id),snapshot=stack[direction].pop();if(!snapshot)return;stack[direction==='undo'?'redo':'undo'].push(groupSnapshot(draft,selectedMode,group.id));draft=restoreGroupSettings(draft,selectedMode,group.id,snapshot);delete pendingParameterStart[group.id];preview(draft);refresh();notify((direction==='undo'?'Previous':'Next')+' '+group.label.toLowerCase()+' settings restored. Apply to save.');}
+ const isSpectrumKey=key=>/^ditherPalette(?:Count|\d+)?$/.test(key);
+ const fieldState=key=>({canUndo:!!history[settingHistoryKey(selectedMode,key)]?.length,canApply:!loading&&!saving&&owner&&(isSpectrumKey(key)?DITHER_SPECTRUM_KEYS.filter(k=>!['colorMode','ditherPreset'].includes(k)):[key]).some(k=>fieldValue(draft,k)!==fieldValue(applied,k))});
+ function undoField(group,key){if(loading||saving||!history[settingHistoryKey(selectedMode,key)]?.length)return;if(group.id==='dither')recordDither();else{const stack=parameterStack(group.id);stack.undo.push(groupSnapshot(draft,selectedMode,group.id));if(stack.undo.length>50)stack.undo.shift();stack.redo=[];}draft=undoModeValue(draft,history,selectedMode,key);preview(draft);refresh();notify('Previous parameter value restored. Apply to save.');}
+ const applyField=key=>void saveDesign(isSpectrumKey(key)?'ditherSpectrum':key);
  const ditherSnapshot=()=>Object.fromEntries(['colorMode',...DITHER_SETTING_KEYS].map(key=>[key,fieldValue(draft,key)]));
  const ditherStack=()=>ditherHistory[selectedMode]||=( {undo:[],redo:[]} );
  const recordDither=()=>{const stack=ditherStack();stack.undo.push(ditherSnapshot());if(stack.undo.length>50)stack.undo.shift();stack.redo=[];};
  function changeDither(key,value,newStep=true){
   if(loading||saving)return;if(newStep)pendingDitherStart={mode:selectedMode,snapshot:ditherSnapshot()};
-  let next=/^ditherPalette(?:Count|\d+)?$/.test(key)?editDitherSpectrum(draft,{},selectedMode,key,value):editModeValue(draft,{},selectedMode,key,value);
+  const inputHistory=pendingDitherStart?.mode===selectedMode?history:{};
+  let next=isSpectrumKey(key)?editDitherSpectrum(draft,inputHistory,selectedMode,key,value):editModeValue(draft,inputHistory,selectedMode,key,value);
   next=editModeValue(next,{},selectedMode,'colorMode','dither');if(key!=='ditherPreset')next=editModeValue(next,{},selectedMode,'ditherPreset','custom');
   if(designSignature(next)===designSignature(draft))return;
   if(pendingDitherStart?.mode===selectedMode){const stack=ditherStack();stack.undo.push(pendingDitherStart.snapshot);if(stack.undo.length>50)stack.undo.shift();stack.redo=[];pendingDitherStart=null;}
@@ -63,7 +79,8 @@ export async function connectDesignEditor({preview,apply,mode}){
  const refresh=()=>{
   const dirty=designSignature(draft)!==designSignature(applied);
   if(modeHint)modeHint.textContent='Editing '+labels[selectedMode]+' · Changes preview here. Apply saves across devices.';
-  if(ditherEditor)ditherEditor.refresh(resolveModeDesign(draft,selectedMode),{canEdit:!loading&&!saving,canUndo:!!ditherStack().undo.length,canRedo:!!ditherStack().redo.length});
+  if(ditherEditor)ditherEditor.refresh(resolveModeDesign(draft,selectedMode),{fieldState,canEdit:!loading&&!saving,canUndo:!!ditherStack().undo.length,canRedo:!!ditherStack().redo.length});
+  for(const [id,editor]of parameterEditors){const stack=parameterStack(id);editor.refresh(resolveModeDesign(draft,selectedMode),{fieldState,mode:selectedMode,canEdit:!loading&&!saving,canUndo:!!stack.undo.length,canRedo:!!stack.redo.length,canApply:!loading&&!saving&&owner&&groupSettingKeys(id,selectedMode).some(key=>fieldValue(draft,key)!==fieldValue(applied,key))});}
   if(!targetsTouched)for(const [value,input]of favoriteTargets)input.checked=value===selectedMode;
   for(const group of DESIGN_GROUPS)for(const f of group.fields){const input=controls.get(f.key);if(!input)continue;
    if(f.type==='checkbox')input.checked=fieldValue(draft,f.key);else input.value=fieldValue(draft,f.key);
@@ -94,8 +111,9 @@ export async function connectDesignEditor({preview,apply,mode}){
  let saveButton=null;
  async function saveDesign(key=null,favorite=null){
   if(saving||!owner||loading)return;
-  const submitted=favorite?applyFavoriteLook(applied,favorite.look,favorite.modes):designForModeApply(applied,draft,selectedMode,key),draftAtSubmit=structuredClone(draft);
-  const selection=key===null||favorite?null:{mode:selectedMode,key,keys:key==='modeDefault'?defaultSettingKeys(selectedMode):key==='cloudLook'?cloudSettingKeys(selectedMode):[...(key.startsWith('dither')&&fieldValue(draft,'colorMode')==='dither'?['colorMode']:[]),...(key==='ditherPreset'?DITHER_SETTING_KEYS:[key])]};
+  const groupId=key?.startsWith('group:')?key.slice(6):null;
+  const submitted=favorite?applyFavoriteLook(applied,favorite.look,favorite.modes):groupId?designForGroupApply(applied,draft,selectedMode,groupId):designForModeApply(applied,draft,selectedMode,key),draftAtSubmit=structuredClone(draft);
+  const selection=key===null||favorite?null:{mode:selectedMode,key,keys:groupId?groupSettingKeys(groupId,selectedMode):key==='ditherSpectrum'?DITHER_SPECTRUM_KEYS:key==='modeDefault'?defaultSettingKeys(selectedMode):key==='cloudLook'?cloudSettingKeys(selectedMode):[...(key.startsWith('dither')&&fieldValue(draft,'colorMode')==='dither'?['colorMode','ditherPreset']:[]),...(key==='ditherPreset'?DITHER_SETTING_KEYS:[key])]};
   saving=true;refresh();notify('Saving '+(key?'this setting':'your design')+'…');
   try{
    const response=await fetch('/api/design',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({settings:submitted,revision}),signal:AbortSignal.timeout(12000)});
@@ -145,28 +163,12 @@ export async function connectDesignEditor({preview,apply,mode}){
     applyRandomButton=button('Apply Dither look',()=>void saveDesign('ditherPreset'));
     actions.append(randomButton,applyRandomButton,button('Save to Favorites',()=>{showGroup('favorites');favoriteName.focus();}));section.append(actions);
     description.textContent='Pick a preset, then customize its colors and motion. Changes preview on this page; Apply saves the complete look.';
-    ditherEditor=createDitherEditor({edit:changeDither,undo:()=>stepDither('undo'),redo:()=>stepDither('redo'),reset:()=>{if(loading||saving)return;recordDither();draft=restoreDitherRandomization(draft,selectedMode,Object.fromEntries(['colorMode',...DITHER_SETTING_KEYS].map(key=>[key,key==='colorMode'?'dither':DESIGN_DEFAULTS[key]])));preview(draft);refresh();notify('Default Dither settings previewed. Undo restores your previous look.');}});
+    ditherEditor=createDitherEditor({edit:changeDither,undoField:key=>undoField(group,key),applyField,undo:()=>stepDither('undo'),redo:()=>stepDither('redo'),reset:()=>{if(loading||saving)return;recordDither();draft=restoreDitherRandomization(draft,selectedMode,Object.fromEntries(['colorMode',...DITHER_SETTING_KEYS].map(key=>[key,key==='colorMode'?'dither':DESIGN_DEFAULTS[key]])));preview(draft);refresh();notify('Default Dither settings previewed. Undo restores your previous look.');}});
     section.append(ditherEditor.element);shell.append(section);continue;
    }
-   for(const f of group.fields){
-    if(f.key==='menuSeconds')continue;
-    const row=document.createElement('div');row.className='editor-setting';const label=document.createElement('label');label.htmlFor='setting-'+f.key;label.textContent=f.label;
-    const input=document.createElement(f.type==='select'?'select':'input');input.id='setting-'+f.key;if(f.type!=='select')input.type=f.type;input.setAttribute('aria-label',f.label);
-    if(f.type==='select')for(const value of f.options){const o=document.createElement('option');o.value=value;o.textContent=f.key==='colorMode'?({cloud:'Cloud · Original',dither:'Dither'})[value]:f.key==='ditherPattern'?({bayer:'Bayer 8×8',bayer4:'Bayer 4×4',bayer2:'Bayer 2×2',halftone:'Halftone',lines:'Lines',crosshatch:'Crosshatch',noise:'Noise',none:'None'})[value]:value==='gameboy'?'Game Boy':value.startsWith('touch-')?['Orbit','Daydream','Glee','Lilt','Prism','Ripple','Intent','Sideglance','Soft wink','Starlit'][Number(value.slice(6))]:value==='auto'?'Follow activity':value[0].toUpperCase()+value.slice(1);input.append(o);}
-    if(f.type==='range'){input.min=f.min;input.max=f.max;input.step=f.step;const output=document.createElement('output');output.htmlFor=input.id;outputs.set(f.key,output);label.append(output);}
-    if(f.type==='text')input.maxLength=12;
-    const undo=button('Undo',()=>{draft=undoModeValue(draft,history,selectedMode,f.key);preview(draft);refresh();notify('Previous '+f.label.toLowerCase()+' restored. Apply to save.');},'setting-undo');undo.setAttribute('aria-label','Undo '+f.label);undos.set(f.key,undo);
-    const applyOne=button('Apply',()=>void saveDesign(f.key),'setting-apply');applyOne.setAttribute('aria-label','Apply '+f.label);applies.set(f.key,applyOne);
-    const actions=document.createElement('div');actions.className='setting-actions';actions.append(undo,applyOne);
-    let dragging=false,recorded=false,colorRecordedMode=null;
-    input.addEventListener('pointerdown',()=>{dragging=true;recorded=false;colorRecordedMode=null;});
-    input.addEventListener('blur',()=>colorRecordedMode=null);
-    for(const event of ['pointerup','pointercancel','change','blur'])input.addEventListener(event,()=>{dragging=false;});
-    const changedInput=()=>{if(loading)return;try{const value=f.type==='range'?Number(input.value):f.type==='checkbox'?input.checked:input.value;const changed=value!==fieldValue(draft,f.key);if(!changed)return;const coalesced=f.type==='color'?colorRecordedMode===selectedMode:dragging&&recorded;draft=editModeValue(draft,coalesced?{}:history,selectedMode,f.key,value);if(f.type==='color')colorRecordedMode=selectedMode;if(dragging)recorded=true;preview(draft);refresh();notify('Previewing '+labels[selectedMode]+' changes. Apply to save across devices.');}catch(error){notify(error.message);}};
-    input.addEventListener('input',changedInput);
-    input.addEventListener('change',changedInput);
-    controls.set(f.key,input);rows.set(f.key,row);row.append(label,input,actions);section.append(row);
-   }shell.append(section);
+   const parameterEditor=createDitherEditor({group,edit:(key,value,newStep)=>changeParameter(group,key,value,newStep),undoField:key=>undoField(group,key),applyField,undo:()=>stepParameter(group,'undo'),redo:()=>stepParameter(group,'redo'),apply:()=>void saveDesign('group:'+group.id),reset:()=>{if(loading||saving)return;const stack=parameterStack(group.id);stack.undo.push(groupSnapshot(draft,selectedMode,group.id));if(stack.undo.length>50)stack.undo.shift();stack.redo=[];draft=restoreGroupSettings(draft,selectedMode,group.id,groupSnapshot(DESIGN_DEFAULTS,selectedMode,group.id));preview(draft);refresh();notify(group.label+' defaults previewed for this page. Undo restores your previous settings.');}});
+   parameterEditors.set(group.id,parameterEditor);section.append(parameterEditor.element);shell.append(section);continue;
+
   }
   const favoritePanel=document.createElement('section');favoritePanel.className='editor-group';favoritePanel.id='edit-favorites';favoritePanel.hidden=true;registerTab('favorites','Favorites',favoritePanel);
   const favoriteHeading=document.createElement('h2');favoriteHeading.textContent='Your favorite looks';
@@ -180,7 +182,7 @@ export async function connectDesignEditor({preview,apply,mode}){
   const favoriteTools=document.createElement('div');favoriteTools.className='favorite-actions';favoriteReload=button('Reload favorites',()=>void loadFavorites());undoFavorite=button('Undo favorite preview',()=>{if(!favoriteSnapshot)return;for(const target of favoriteSnapshot.modes)draft=applyFavoriteLook(draft,captureFavoriteLook(favoriteSnapshot.design,target),[target]);favoriteSnapshot=null;preview(draft);refresh();notify('Favorite preview undone. Apply to save any remaining edits.');});favoriteTools.append(favoriteReload,undoFavorite);
   favoriteList=document.createElement('div');favoriteList.className='favorite-list';favoriteList.textContent='Sign in as owner to load and save your favorites.';favoritePanel.append(favoriteHeading,favoriteCopy,favoriteForm,targetBox,note,favoriteTools,favoriteList);shell.append(favoritePanel);
   const footer=document.createElement('footer');footer.className='editor-actions';
-  const discard=button('Discard previews',()=>{if(loading||saving)return;draft=structuredClone(applied);history={};randomHistory={};cloudHistory={};defaultPending={};favoriteSnapshot=null;ditherHistory={};pendingDitherStart=null;ditherEditor?.closePicker();preview(draft);refresh();notify('Back to your saved design.');});
+  const discard=button('Discard previews',()=>{if(loading||saving)return;draft=structuredClone(applied);history={};randomHistory={};cloudHistory={};defaultPending={};favoriteSnapshot=null;ditherHistory={};pendingDitherStart=null;parameterHistory={};pendingParameterStart={};ditherEditor?.closePicker();for(const editor of parameterEditors.values())editor.closePicker();preview(draft);refresh();notify('Back to your saved design.');});
   saveButton=button('Save all changes',()=>void saveDesign(),'editor-apply');footer.append(status,discard,saveButton);shell.append(footer);document.body.append(shell);
   window.addEventListener('beforeunload',event=>{if(!loading&&designSignature(draft)!==designSignature(applied)){event.preventDefault();event.returnValue='';}});
   notify('Loading your saved design…');refresh();
