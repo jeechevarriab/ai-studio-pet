@@ -184,3 +184,24 @@ Published Sites version 19, source 6645ecb51076806f837a9a86a2e95225e1f28ad5. Pag
 Added a SLEEP alarm-time panel shown only with the page UI. Default 7:00 AM, configurable under Customize / Alarm with hour, minute and explicit AM/PM, each retaining Undo/Apply. This is a stored time preview only, not an armed/ringing alarm, notification permission request, background timer or automation. Alarm fields are shared for the single Sleep clock and excluded from Cloud default/reset appearance fields.
 
 Verification: 43 private tests and hosted build/artifact/routes/API checks passed. Browser navigated LIVE/WORK/PLAY/SLEEP using the device keyboard path and observed UI hidden until activation; actual click opened UI and navigation retained it, including after more than the previous menu timeout. Sleep panel hid in full-body view and showed 7:00 AM after activation. Local editor PM selection updated the preview to 7:00 PM without saving test settings. Native drag automation triggered the existing long-press behavior, so no physical swipe timing claim is made; navigation gesture handlers were inspected and existing engine swipe tests passed. Before/after public design revision 102 and WORK projection hash matched; its saved finish remained Dither. No user's cloud design was written during these checks. Physical iPhone behavior/performance remains unverified.
+
+## Favorites and editor navigation — 2026-11-03
+
+Published Sites version 20, source 7581e556128a44a8231bf329954a31081e144a13,
+deployment appgdep_6ae96d1ecb00819190445efbb2318e30 (succeeded).
+Favorites stores up to 30 named looks and small JPEG previews in an independent,
+owner-only revision/ETag checked R2 collection. Save does not activate; Preview,
+Undo favorite preview and Apply favorite to explicitly checked pages are separate.
+Transfers eyes, colors, shape, finish and visual motion, preserving other pages,
+alarms, sensors and STUDIO behavior. The editor now shows only the selected page's
+colors, all feature tabs remain visible, Dither edits activate the preview, saved
+state disables unnecessary saves, and mobile preview/menu no longer overlap.
+Existing approved character rendering and saved preferences were preserved.
+
+Verified five focused model tests, favorites API authorization/CSRF/validation/
+revision/persistence/removal, existing design and relay API checks, build/routes.
+Isolated synthetic browser tested save with thumbnail, reload, WORK-only Apply,
+unrelated draft retention, preview undo and no-target guard. Layouts inspected at
+390, 820 and desktop. Screenshot: docs/previews/favorites-editor.jpg (test look).
+No production test preference writes, model calls or infrastructure changes.
+Physical iPhone and multiple live signed-in owner devices remain unverified.

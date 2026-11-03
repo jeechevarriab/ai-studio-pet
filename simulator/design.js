@@ -89,6 +89,25 @@ export async function loadInitialDesign(readCloud,readCache){
  catch{try{return {settings:validateDesign(readCache()),source:'cache'};}catch{throw Error('Your saved design could not load. Reload to try again.');}}
 }
 export const settingHistoryKey=(mode,key)=>(scopedSetting(key)?mode:'global')+'/'+key;
+// Favorites carry appearance only: never alarms, sensor permissions or STUDIO behavior.
+export const FAVORITE_KEYS=DESIGN_FIELDS.filter(f=>scopedSetting(f.key)&&!['sensors','pickup','greetingSeconds','zoom','menuSeconds','holdMs'].includes(f.key)).map(f=>f.key);
+export function captureFavoriteLook(design,mode){
+ const d=resolveModeDesign(design,mode);
+ return {values:Object.fromEntries(FAVORITE_KEYS.map(key=>[key,d[key]])),color:d[mode+'Color'],background:d[mode+'Background'],eye:d[mode+'Eye']};
+}
+export function validateFavoriteLook(look){
+ if(!look||typeof look!=='object'||Array.isArray(look)||Object.keys(look).some(k=>!['values','color','background','eye'].includes(k))||!look.values||typeof look.values!=='object'||Array.isArray(look.values)||Object.keys(look.values).length!==FAVORITE_KEYS.length||FAVORITE_KEYS.some(k=>!Object.hasOwn(look.values,k)))throw Error('Invalid favorite design');
+ const d=validateDesign({...look.values,liveColor:look.color,liveBackground:look.background,liveEye:look.eye});
+ if(!look.color||!look.background||!look.eye)throw Error('Incomplete favorite colors');
+ return captureFavoriteLook(d,'live');
+}
+export function applyFavoriteLook(design,look,modes){
+ const checked=validateFavoriteLook(look);if(!Array.isArray(modes)||!modes.length||modes.some(m=>!DESIGN_MODES.includes(m)))throw Error('Choose a page');
+ let next=validateDesign(design);for(const mode of new Set(modes)){
+  for(const key of FAVORITE_KEYS)next=writeModeSetting(next,mode,key,checked.values[key]);
+  for(const [suffix,key]of [['Color','color'],['Background','background'],['Eye','eye']])next=writeModeSetting(next,mode,mode+suffix,checked[key]);
+ }return next;
+}
 export function resolveModeDesign(input,mode){const d=validateDesign(input);if(!DESIGN_MODES.includes(mode))throw Error('Invalid mode');return {...d,...d.modeOverrides[mode],modeOverrides:{}};}
 function writeModeSetting(input,mode,key,value){
  if(!DESIGN_MODES.includes(mode)||!DESIGN_FIELDS.some(f=>f.key===key))throw Error('Invalid mode setting');

@@ -1,5 +1,28 @@
 # Companion editor and STUDIO activity
 
+## Favorites and editor navigation — 2026-11-03
+
+Favorites saves the current page's complete appearance and a small canvas preview
+to a separate owner-only revision-checked cloud collection (maximum 30). Saving a
+favorite never activates it. Choose destination pages, then Preview or Apply
+favorite. Preview has its own undo; Apply changes only the checked pages. It copies
+eyes, colors, shape, finish and visual motion, not alarms, sensor/pickup settings,
+menu behavior or STUDIO auto-follow. Other pending edits remain previews. Favorite
+removal requires confirmation and does not alter active pages.
+
+All eight feature tabs remain visible, with keyboard navigation. Colors/eye colors
+are filtered to the selected page. Dither field edits also select Dither in preview.
+The mobile preview no longer covers the menu; tablet uses the single-column layout.
+Save messages stay next to the sticky save controls; unchanged saves disable.
+Unsaved changes raise a leave warning and Open Mascot opens in another tab.
+
+Five focused model tests and hosted API/auth/revision/route checks passed. Browser
+QA used tools/preview-favorites.mjs, a disposable loopback-only synthetic owner and
+in-memory bucket; it never reads or writes production preferences. Verified save,
+thumbnail, reload, WORK-only Apply, unrelated draft retention, undo and empty-target
+feedback; inspected 390/820/desktop layouts. Preview: docs/previews/favorites-editor.jpg.
+Physical iPhone behavior and cross-device live owner sessions were not tested.
+
 Owner authorized synced customization with owner-only sign-in and connection to
 the five STUDIO agents. The editor is https://studio-mascot.jesse-ech.chatgpt.site/customize.
 It provides 48 validated controls across Color, Face, Shape, Light and Interaction.
