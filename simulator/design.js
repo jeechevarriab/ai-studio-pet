@@ -84,6 +84,26 @@ export function validateDesign(input){
  return result;
 }
 export const modeSetting=(design,mode,key)=>scopedSetting(key)?design.modeOverrides?.[mode]?.[key]??design[key]:design[key];
+export const designSignature=design=>JSON.stringify(design,(_key,value)=>value&&typeof value==='object'&&!Array.isArray(value)?Object.fromEntries(Object.keys(value).sort().map(key=>[key,value[key]])):value);
+export const DITHER_SPECTRUM_KEYS=['colorMode','ditherPreset','ditherPalette','ditherPaletteCount',...Array.from({length:8},(_,i)=>'ditherPalette'+(i+1)),'ditherWaveColor','ditherBackground','ditherColors','ditherTransparent'];
+export function activeDitherSpectrum(design,mode){
+ const value=key=>modeSetting(design,mode,key),palette=value('ditherPalette');
+ return palette==='custom'?Array.from({length:value('ditherPaletteCount')},(_,i)=>value('ditherPalette'+(i+1))):palette==='none'?[value('ditherBackground'),value('ditherWaveColor')]:[...DITHER_PALETTES[palette]];
+}
+export function editDitherSpectrum(draft,history,mode,key,value){
+ if(!['ditherPalette','ditherPaletteCount',...Array.from({length:8},(_,i)=>'ditherPalette'+(i+1))].includes(key))throw Error('Invalid spectrum setting');
+ const snapshot=Object.fromEntries(DITHER_SPECTRUM_KEYS.map(k=>[k,modeSetting(draft,mode,k)]));
+ let next=draft;
+ if(modeSetting(draft,mode,'ditherPalette')!=='custom'&&(key!=='ditherPalette'||value==='custom')){
+  const colors=activeDitherSpectrum(draft,mode);
+  next=writeModeSetting(next,mode,'ditherPaletteCount',colors.length);
+  for(const [i,color]of colors.entries())next=writeModeSetting(next,mode,'ditherPalette'+(i+1),color);
+  next=writeModeSetting(next,mode,'ditherPalette','custom');
+ }
+ next=writeModeSetting(next,mode,key,value);next=writeModeSetting(next,mode,'colorMode','dither');next=writeModeSetting(next,mode,'ditherPreset','custom');
+ if(JSON.stringify(next)!==JSON.stringify(draft)){const stack=history[settingHistoryKey(mode,key)]||=[];stack.push(snapshot);if(stack.length>50)stack.shift();}
+ return next;
+}
 export async function loadInitialDesign(readCloud,readCache){
  try{return {settings:validateDesign(await readCloud()),source:'cloud'};}
  catch{try{return {settings:validateDesign(readCache()),source:'cache'};}catch{throw Error('Your saved design could not load. Reload to try again.');}}
@@ -123,7 +143,7 @@ export function editModeValue(draft,history,mode,key,value){
  const next=writeModeSetting(draft,mode,key,value),old=modeSetting(draft,mode,key),h=settingHistoryKey(mode,key);
  if(modeSetting(next,mode,key)!==old){(history[h]||=[]).push(old);if(history[h].length>50)history[h].shift();}return next;
 }
-export function undoModeValue(draft,history,mode,key){const stack=history[settingHistoryKey(mode,key)];if(!stack?.length)return draft;const old=stack.pop();if(key==='ditherPreset'&&typeof old==='object'){let next=draft;for(const [k,v]of Object.entries(old))next=writeModeSetting(next,mode,k,v);return next;}return writeModeSetting(draft,mode,key,old);}
+export function undoModeValue(draft,history,mode,key){const stack=history[settingHistoryKey(mode,key)];if(!stack?.length)return draft;const old=stack.pop();if(old&&typeof old==='object'){let next=draft;for(const [k,v]of Object.entries(old))next=writeModeSetting(next,mode,k,v);return next;}return writeModeSetting(draft,mode,key,old);}
 export function randomizeDither(draft,mode,random=Math.random){
  const pick=values=>values[Math.min(values.length-1,Math.floor(random()*values.length))];
  const range=(min,max,step)=>Number((min+Math.round(random()*(max-min)/step)*step).toFixed(4));
@@ -147,7 +167,7 @@ export function randomizeCloud(draft,mode,random=Math.random){
  let next=draft;for(const [key,value]of Object.entries(changes))next=writeModeSetting(next,mode,key,value);return {draft:next,snapshot};
 }
 export function restoreCloudRandomization(draft,mode,snapshot){let next=draft;for(const key of cloudSettingKeys(mode))next=writeModeSetting(next,mode,key,snapshot[key]);return next;}
-export function designForModeApply(applied,draft,mode,key=null){if(key===null)return validateDesign(draft);let next=applied;if(key==='cloudLook'||key==='modeDefault'){for(const k of key==='modeDefault'?defaultSettingKeys(mode):cloudSettingKeys(mode))next=writeModeSetting(next,mode,k,modeSetting(draft,mode,k));return next;}if(key.startsWith('dither')&&modeSetting(draft,mode,'colorMode')==='dither')next=writeModeSetting(next,mode,'colorMode','dither');if(key==='ditherPreset'){for(const k of DITHER_SETTING_KEYS)next=writeModeSetting(next,mode,k,modeSetting(draft,mode,k));return next;}return writeModeSetting(next,mode,key,modeSetting(draft,mode,key));}
+export function designForModeApply(applied,draft,mode,key=null){if(key===null)return validateDesign(draft);let next=applied;if(key==='ditherSpectrum'){for(const k of DITHER_SPECTRUM_KEYS)next=writeModeSetting(next,mode,k,modeSetting(draft,mode,k));return next;}if(key==='cloudLook'||key==='modeDefault'){for(const k of key==='modeDefault'?defaultSettingKeys(mode):cloudSettingKeys(mode))next=writeModeSetting(next,mode,k,modeSetting(draft,mode,k));return next;}if(key.startsWith('dither')&&modeSetting(draft,mode,'colorMode')==='dither')next=writeModeSetting(next,mode,'colorMode','dither');if(key==='ditherPreset'){for(const k of DITHER_SETTING_KEYS)next=writeModeSetting(next,mode,k,modeSetting(draft,mode,k));return next;}return writeModeSetting(next,mode,key,modeSetting(draft,mode,key));}
 export function reconcileSavedDesign(saved,before,after,selection=null){
  const includes=key=>!selection||(selection.keys||[selection.key]).includes(key);
  const result=structuredClone(after);

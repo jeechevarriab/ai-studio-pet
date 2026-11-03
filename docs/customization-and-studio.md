@@ -1,5 +1,30 @@
 # Companion editor and STUDIO activity
 
+## Dither spectrum and Undo — 2026-11-03
+
+The owner's supplied Presets / Customize and color-picker screenshots govern the
+Dither layout. Six preset tiles sit above compact numeric sliders and toggles.
+Wave Color and Background mirror the actual active palette endpoints. Click an
+endpoint or any spectrum shade for the HSV plane, hue slider, hex entry, fixed and
+recent swatches, copy and feature-detected screen eyedropper. Recent colors are
+browser-local only. Named palettes convert to Custom by retaining their exact
+shades before the selected edit. Colors controls the real palette length (2–8);
+without a palette it controls scalar levels (2–16). Existing schema is retained.
+
+Dither header Reset/Undo/Redo restores the full Dither state for this mode, without
+altering eyes or other pages. A pointer drag records one history entry. Apply
+Dither look still uses owner-only revision-protected saving. Canonical design
+comparison prevents phantom pending edits when JSON field order changes. Generic
+native color controls coalesce changes during one picker session for their Undo.
+
+Ten focused tests passed for spectrum transfer, validation, Undo, exact HSV
+roundtrips, successful-save equality and existing per-mode behavior. Existing
+hosted auth/design/favorites checks and build passed. Isolated browser verified
+Game Boy endpoint #9bbc0f, highlight edit preserving three shades, one-drag Undo,
+Redo, Apply/reload, numeric shade growth 4→6→Undo 4 and 390px no overflow. See
+docs/previews/dither-picker.jpg and dither-controls.jpg. No production test writes;
+physical phone gestures and the browser's native eyedropper were not exercised.
+
 ## Favorites and editor navigation — 2026-11-03
 
 Favorites saves the current page's complete appearance and a small canvas preview

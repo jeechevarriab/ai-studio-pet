@@ -205,3 +205,25 @@ unrelated draft retention, preview undo and no-target guard. Layouts inspected a
 390, 820 and desktop. Screenshot: docs/previews/favorites-editor.jpg (test look).
 No production test preference writes, model calls or infrastructure changes.
 Physical iPhone and multiple live signed-in owner devices remain unverified.
+
+## Reference-style Dither editor and reliable Undo — 2026-11-03
+
+Published Sites version 21, source 378ba599ce2485f4638404c1693e22534c393075;
+deployment appgdep_6ae9e3fb09c88191b3f4cfe33cd8e410 succeeded. Implemented the
+owner's supplied full Presets / Customize format, compact range/numeric controls,
+full HSV picker with hue/hex/swatches/recents and feature-detected screen eyedropper.
+Active palette endpoints replace misleading ignored Wave Color/Background values.
+Editing a named spectrum retains its shades before converting to Custom; Colors
+resizes the actual palette. Per-mode Reset/Undo/Redo restores complete Dither
+snapshots; one pointer drag records one undo step. Generic native color picker
+sessions also coalesce changes. Fixed false unsaved state after Apply by comparing
+canonical design values rather than JSON field insertion order.
+
+Ten focused model/HSV/per-mode/save regression tests and existing hosted design,
+favorites and relay API authorization checks passed. Browser verified endpoint
+matching, hex editing with palette seeding, one-drag Undo and Redo, Apply/reload
+with All changes saved disabled, 4→6-shade editing and Undo back to 4, and 390px
+layout without horizontal overflow. Saved dither-picker.jpg and dither-controls.jpg
+in docs/previews. Browser experiments used only a loopback synthetic owner/bucket;
+no production settings were written and the owner's existing browser drafts were
+left untouched. Physical iPhone touch and native eyedropper execution unverified.

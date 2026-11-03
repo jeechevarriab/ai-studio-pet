@@ -15,6 +15,7 @@ const assets = new Map([
   ['/customize', ['simulator/index.html', 'text/html']],
   ['/simulator/design.js', ['simulator/design.js', 'text/javascript']],
   ['/simulator/editor.js', ['simulator/editor.js', 'text/javascript']],
+  ['/simulator/dither-editor.js', ['simulator/dither-editor.js', 'text/javascript']],
   ['/simulator/editor.css', ['simulator/editor.css', 'text/css']],
   ['/simulator/studio.js', ['simulator/studio.js', 'text/javascript']],
   ['/manifest.webmanifest', ['simulator/manifest.webmanifest', 'application/manifest+json']],
