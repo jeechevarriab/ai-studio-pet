@@ -262,3 +262,17 @@ loopback fixture. Blank-region RGB ranges changed from 4/3/2 before to 0/0/0 aft
 and the affected background is visibly flat. Saved mobile-lines-before.jpg and
 mobile-lines-fixed.jpg in docs/previews. Worker build/artifact validation passed.
 Physical iPhone display/compositing remains unverified.
+
+## Favicon refresh — 2026-11-03
+
+Published Sites version 24, source f9ecfb343010637888ac13bb9cafb9951b09041a;
+deployment appgdep_6ae9ecca39b88191b3c8e92fe7d680be succeeded. Updated the tab icon
+with the existing teal cloud silhouette/palette and ASCII eyes. Editable source:
+simulator/icons/mascot-favicon-v2.svg. Browser-rendered PNG exports at 32/192px and
+an ICO fallback are retained. HTML uses new SVG/32px filenames and /favicon.ico
+serves the same new icon. Original Apple touch and installed-app icons preserved.
+
+Inspected vector preview and exported PNG, verified dimensions and hosted Worker
+asset/root fallback/page-link checks. Direct browser download waiting timed out;
+recovered by saving the export page's generated PNG data links without installing
+any dependency. All design/account settings and existing drafts were untouched.
