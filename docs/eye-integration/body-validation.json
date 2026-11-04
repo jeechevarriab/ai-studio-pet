@@ -2,61 +2,217 @@
   {
     "mode": "live",
     "time": 0,
-    "changedChannels": 0
+    "attention": 0,
+    "different": 0
+  },
+  {
+    "mode": "live",
+    "time": 0,
+    "attention": 0.35,
+    "different": 0
+  },
+  {
+    "mode": "live",
+    "time": 0,
+    "attention": 1,
+    "different": 0
   },
   {
     "mode": "live",
     "time": 2800,
-    "changedChannels": 0
+    "attention": 0,
+    "different": 0
+  },
+  {
+    "mode": "live",
+    "time": 2800,
+    "attention": 0.35,
+    "different": 0
+  },
+  {
+    "mode": "live",
+    "time": 2800,
+    "attention": 1,
+    "different": 0
   },
   {
     "mode": "live",
     "time": 9000,
-    "changedChannels": 0
+    "attention": 0,
+    "different": 0
+  },
+  {
+    "mode": "live",
+    "time": 9000,
+    "attention": 0.35,
+    "different": 0
+  },
+  {
+    "mode": "live",
+    "time": 9000,
+    "attention": 1,
+    "different": 0
   },
   {
     "mode": "work",
     "time": 0,
-    "changedChannels": 0
+    "attention": 0,
+    "different": 0
+  },
+  {
+    "mode": "work",
+    "time": 0,
+    "attention": 0.35,
+    "different": 0
+  },
+  {
+    "mode": "work",
+    "time": 0,
+    "attention": 1,
+    "different": 0
   },
   {
     "mode": "work",
     "time": 2800,
-    "changedChannels": 0
+    "attention": 0,
+    "different": 0
+  },
+  {
+    "mode": "work",
+    "time": 2800,
+    "attention": 0.35,
+    "different": 0
+  },
+  {
+    "mode": "work",
+    "time": 2800,
+    "attention": 1,
+    "different": 0
   },
   {
     "mode": "work",
     "time": 9000,
-    "changedChannels": 0
+    "attention": 0,
+    "different": 0
+  },
+  {
+    "mode": "work",
+    "time": 9000,
+    "attention": 0.35,
+    "different": 0
+  },
+  {
+    "mode": "work",
+    "time": 9000,
+    "attention": 1,
+    "different": 0
   },
   {
     "mode": "surf",
     "time": 0,
-    "changedChannels": 0
+    "attention": 0,
+    "different": 0
+  },
+  {
+    "mode": "surf",
+    "time": 0,
+    "attention": 0.35,
+    "different": 0
+  },
+  {
+    "mode": "surf",
+    "time": 0,
+    "attention": 1,
+    "different": 0
   },
   {
     "mode": "surf",
     "time": 2800,
-    "changedChannels": 0
+    "attention": 0,
+    "different": 0
+  },
+  {
+    "mode": "surf",
+    "time": 2800,
+    "attention": 0.35,
+    "different": 0
+  },
+  {
+    "mode": "surf",
+    "time": 2800,
+    "attention": 1,
+    "different": 0
   },
   {
     "mode": "surf",
     "time": 9000,
-    "changedChannels": 0
+    "attention": 0,
+    "different": 0
+  },
+  {
+    "mode": "surf",
+    "time": 9000,
+    "attention": 0.35,
+    "different": 0
+  },
+  {
+    "mode": "surf",
+    "time": 9000,
+    "attention": 1,
+    "different": 0
   },
   {
     "mode": "sleep",
     "time": 0,
-    "changedChannels": 0
+    "attention": 0,
+    "different": 0
+  },
+  {
+    "mode": "sleep",
+    "time": 0,
+    "attention": 0.35,
+    "different": 0
+  },
+  {
+    "mode": "sleep",
+    "time": 0,
+    "attention": 1,
+    "different": 0
   },
   {
     "mode": "sleep",
     "time": 2800,
-    "changedChannels": 0
+    "attention": 0,
+    "different": 0
+  },
+  {
+    "mode": "sleep",
+    "time": 2800,
+    "attention": 0.35,
+    "different": 0
+  },
+  {
+    "mode": "sleep",
+    "time": 2800,
+    "attention": 1,
+    "different": 0
   },
   {
     "mode": "sleep",
     "time": 9000,
-    "changedChannels": 0
+    "attention": 0,
+    "different": 0
+  },
+  {
+    "mode": "sleep",
+    "time": 9000,
+    "attention": 0.35,
+    "different": 0
+  },
+  {
+    "mode": "sleep",
+    "time": 9000,
+    "attention": 1,
+    "different": 0
   }
 ]

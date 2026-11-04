@@ -374,24 +374,40 @@ function softBlob(ctx, image, time, still, amount=1) {
 }
 
 export function renderSceneV2(ctx, {activity, definition, time = 0, reducedMotion = false, motion = {x:0,y:0}, attention=0, touchEye = -1, greeting=0, manualBlinkAt=-Infinity, compareDefault=false, appearanceFrom=null, appearanceBlend=1}) {
-  const presentation=definition.presentationV2||defaultPresentationV2,custom=presentation.custom||{};
-  const e={...definition.expressions[activity.expression],color:(presentation.modeColors||defaultPresentationV2.modeColors)[activity.mode||'live']};
-  const mode=activity.mode||'live',workTheme=mode==='work',playTheme=mode==='surf';
-  const eyeColor=custom[mode+'Eye'];
-  const paintedDefinition=workTheme?{...definition,body:{...definition.body,shadowColor:'#3b0605',highlightColor:'#fff4ef'},eyes:{...definition.eyes,color:eyeColor||'#361423'}}:playTheme?{...definition,body:{...definition.body,shadowColor:'#000306',highlightColor:'#071117',darkSurface:true},eyes:{...definition.eyes,color:eyeColor||'#dcfcff'}}:{...definition,eyes:{...definition.eyes,color:eyeColor||definition.eyes.color}};
+  const presentation = definition.presentationV2 || defaultPresentationV2;
+  const custom=presentation.custom||{};
+  const e = {...definition.expressions[activity.expression], color: (presentation.modeColors || defaultPresentationV2.modeColors)[activity.mode || 'live']};
+  const t = reducedMotion ? 0 : time;
+  if((activity.mode||'live')==='live'&&custom.colorCycle!==false) e.color=mixColor(homeColor(presentation,e.color,t),e.color,attention);
+  const breath = Math.sin(t / e.periodMs * TAU);
+  const workTheme=activity.mode==='work';
+  const playTheme=activity.mode==='surf';
+  const eyeColor=custom[(activity.mode||'live')+'Eye'];
+  const paintedDefinition=workTheme?{...definition,body:{...definition.body,shadowColor:'#3b0605',highlightColor:'#fff4ef'},eyes:{...definition.eyes,color:eyeColor||'#361423',layers:['#9b4868','#62253e',eyeColor||'#361423']}}:playTheme?{...definition,body:{...definition.body,shadowColor:'#000306',highlightColor:'#071117',darkSurface:true},eyes:{...definition.eyes,color:eyeColor||'#dcfcff',layers:['#3988bf','#7bdcf6',eyeColor||'#dcfcff'],luminous:true}}:{...definition,eyes:{...definition.eyes,color:eyeColor||definition.eyes.color}};
   if(playTheme)e.color=custom.surfColor||'#01070b';
   ctx.save();ctx.filter=`saturate(${(custom.saturation??120)/100})`;
-  ctx.fillStyle=custom[mode+'Background']||(workTheme?'#f2efed':playTheme?'#078fe3':'#050909');ctx.fillRect(0,0,410,502);
-  // Preserve the original tap-to-menu translation and zoom. Resting material
-  // stays fixed; eye animation remains independent of this interaction pose.
-  ctx.save();ctx.translate(205,249+attention*231);
-  const zoom=1+attention*((custom.zoom??1.3)-1);
-  ctx.scale(zoom,zoom);ctx.translate(-205,-249);
-  const body=floatingBody(paintedDefinition,e.color,0,mode,true);
-  softBlob(ctx,litBody(body,paintedDefinition,{x:0,y:0},0,true,mode),0,true);
-  ctx.filter='none';
-  ctx.translate(0,-attention*27);
-  const t=reducedMotion?0:time,options={still:reducedMotion,touchEye,manualBlinkAt,motion,compareDefault};
+  ctx.fillStyle = custom[(activity.mode||'live')+'Background']||(workTheme?'#f2efed':playTheme?'#078fe3':'#050909'); ctx.fillRect(0, 0, 410, 502);
+  ctx.save();
+    // A single floating treatment across LIVE, WORK, SURF and SLEEP.
+    const offsetX = reducedMotion ? 0 : motion.x*(custom.bodySway??1);
+    const offsetY = reducedMotion ? 0 : motion.y*(custom.bodySway??1);
+    ctx.translate(205 + offsetX, 249 + offsetY + attention * 231);
+    ctx.rotate(reducedMotion ? 0 : offsetX * .0015);
+    ctx.scale(1 + attention * ((custom.zoom??1.3)-1), 1 + attention * ((custom.zoom??1.3)-1));
+    ctx.translate(-205, -249);
+    const bob = breath * e.bobPx * 1.7*(custom.float??1);
+    // Keep the page background flat. A low-alpha, canvas-wide halo reveals
+    // gradient bands and its transformed rectangle on pale mobile screens.
+    // The mascot retains its own soft material mask and depth lighting below.
+    ctx.translate(0, bob);
+    const body=floatingBody(paintedDefinition,e.color,t,activity.mode||'live',reducedMotion);
+    softBlob(ctx,litBody(body,paintedDefinition,motion,t,reducedMotion,activity.mode||'live'),t,reducedMotion,custom.liquid??1);
+    const faceY=237-attention*27;
+    ctx.filter='none';
+    // Eyes travel farther than the body, making the corner glance readable.
+    ctx.translate(reducedMotion?0:Math.max(-12,Math.min(12,motion.x*1.8))*(custom.gaze??1),reducedMotion?0:Math.max(-9,Math.min(9,motion.y*2))*(custom.gaze??1));
+    ctx.translate(0,faceY-237);
+  const options={still:reducedMotion,touchEye,manualBlinkAt,motion,compareDefault};
   if(appearanceFrom&&appearanceBlend<1&&!compareDefault)
     renderUnifiedEyes(ctx,appearanceFrom,e,t,{...options,opacity:1-appearanceBlend});
   const amount=appearanceFrom?appearanceBlend:1;

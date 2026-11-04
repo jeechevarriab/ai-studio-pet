@@ -14,7 +14,7 @@ Legacy per-page eye appearance settings converge to shared values in fixed LIVE 
 
 ## Body preservation
 
-The original material, per-page colors, gradients, silhouette, dimensions and lighting are retained at their exact resting frame. The V2 body no longer receives animation time, sensor pose, bob, rotation, deformation or menu zoom. Mode navigation remains the existing page transition. Twelve before/after pixel comparisons across all four modes at 0, 2800 and 9000ms found zero differing channels with eye drawing suppressed. Source baseline retained in renderer-before.js. Existing body/color settings and production profiles are not overwritten.
+The original body rendering pipeline is restored verbatim, including its material, colors, gradient cycle, lighting, sensor pose, floating motion, deformation, tap-to-menu movement and zoom. Existing page navigation and menu behavior remain. Before/after body comparisons use the same clock and pose, with eye drawing suppressed. Source baseline retained in renderer-before.js. Existing body/color settings and production profiles are not overwritten.
 
 ## Verification
 

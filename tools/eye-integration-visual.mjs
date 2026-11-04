@@ -10,7 +10,7 @@ try{
  const bodies=await page.evaluate(async()=>{
   const modern=await import('/simulator/renderer.js'),before=await import('/__baseline.js'),design=await import('/simulator/design.js'),base=await(await fetch('/character/expressions.json')).json(),restore=await(await fetch('/character/cloud-default-design.json')).json(),results=[];
   function render(module,definition,mode,time,reducedMotion){const c=document.createElement('canvas');c.width=410;c.height=502;const ctx=c.getContext('2d');ctx.fillText=()=>{};module.renderSceneV2(ctx,{activity:{mode,expression:mode==='sleep'?'sleeping':'idle'},definition,time,reducedMotion,motion:{x:5,y:-3},attention:0});return ctx.getImageData(0,0,410,502).data;}
-  for(const mode of ['live','work','surf','sleep']){const def=design.designDefinition(base,design.resolveModeDesign(design.validateDesign(restore.settings),mode)),ref=render(before,def,mode,0,true);for(const t of [0,2800,9000]){const actual=render(modern,def,mode,t,false);let changedChannels=0;for(let i=0;i<actual.length;i++)if(actual[i]!==ref[i])changedChannels++;results.push({mode,time:t,changedChannels});}}
+  for(const mode of ['live','work','surf','sleep']){const def=design.designDefinition(base,design.resolveModeDesign(design.validateDesign(restore.settings),mode));for(const t of [0,2800,9000]){const ref=render(before,def,mode,t,false),actual=render(modern,def,mode,t,false);let changedChannels=0;for(let i=0;i<actual.length;i++)if(actual[i]!==ref[i])changedChannels++;results.push({mode,time:t,changedChannels});}}
   return results;
  });
  await writeFile(new URL('body-validation.json',out),JSON.stringify(bodies,null,2));
