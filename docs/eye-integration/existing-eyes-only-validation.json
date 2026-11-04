@@ -1,0 +1,56 @@
+{
+  "styles": [
+    {
+      "name": "Orbit",
+      "staticDifferences": 0,
+      "animates": true
+    },
+    {
+      "name": "Daydream",
+      "staticDifferences": 0,
+      "animates": true
+    },
+    {
+      "name": "Glee",
+      "staticDifferences": 0,
+      "animates": true
+    },
+    {
+      "name": "Lilt",
+      "staticDifferences": 0,
+      "animates": true
+    },
+    {
+      "name": "Prism",
+      "staticDifferences": 0,
+      "animates": true
+    },
+    {
+      "name": "Ripple",
+      "staticDifferences": 0,
+      "animates": true
+    },
+    {
+      "name": "Intent",
+      "staticDifferences": 0,
+      "animates": true
+    },
+    {
+      "name": "Sideglance",
+      "staticDifferences": 0,
+      "animates": true
+    },
+    {
+      "name": "Soft wink",
+      "staticDifferences": 0,
+      "animates": true
+    },
+    {
+      "name": "Starlit",
+      "staticDifferences": 0,
+      "animates": true
+    }
+  ],
+  "bodyDifferences": 0,
+  "generatorControls": 0
+}

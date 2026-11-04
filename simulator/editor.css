@@ -99,11 +99,3 @@ html.customizing, .customizing body{background:#08090b;color:#f6f6f7;color-schem
 .app-only .customize-link{top:9%;min-height:36px;min-width:82px;display:inline-flex;align-items:center;justify-content:center;font-size:11px}
 .app-only .device-bottom{top:20%}.app-only .mode-nav button{min-height:40px;padding:8px 3px;font-size:clamp(11px,3cqw,14px);letter-spacing:.05em}
 .app-only .studio-panel,.app-only .sleep-panel,.app-only .play-panel{top:33%}
-
-/* Eye preview tools extend Face without changing the shared parameter layout. */
-.editor-eye-preview{margin:0 0 18px}.editor-eye-preview h3{font-size:16px;margin:0 0 8px;letter-spacing:-.2px}
-.editor-eye-preview .editor-description{margin:0 0 12px}
-.editor-eye-actions{display:flex;flex-wrap:wrap;gap:8px}
-.editor-eye-actions button{min-height:44px;padding:10px 12px;border:1px solid #3a4652;border-radius:10px;background:#17232d;color:#d7edfc;font-size:12px;letter-spacing:0;line-height:1.3}
-.editor-eye-actions button[aria-pressed="true"]{background:#d0edff;color:#122432;border-color:#d0edff}
-@media(max-width:400px){.editor-eye-actions{gap:6px}.editor-eye-actions button{padding:10px;font-size:12px}}

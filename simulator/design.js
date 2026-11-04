@@ -35,14 +35,11 @@ export const DESIGN_GROUPS=[
  ]},
  {id:'face',label:'Face',description:'One character size, across every expression.',fields:[
   {key:'expression',label:'Eye expression',type:'select',value:'auto',options:['auto','idle','happy','focused','sleeping','touch-0','touch-1','touch-2','touch-3','touch-4','touch-5','touch-6','touch-7','touch-8','touch-9']},
-  range('eyeStyle','Eye Style Generator',0,0,100),
   range('eyeSize','Eye size · %',100,70,130),range('characterSize','Character size · %',100,70,130),
-  range('eyeSeparation','Eye separation · %',100,75,125),range('eyeDensity','ASCII Density',2,1,3,.25),
-  range('eyeBlinkDuration','Blink Speed · milliseconds',180,80,500,10),range('eyeBlinkInterval','Blink Frequency · seconds',5.1,1,15,.1),
-  range('eyeOpenness','Eye Openness',1,0,1,.05),range('eyeGlow','Eye Glow',0,0,8,.25),toggle('eyeTracking','Eye Tracking',true),
+  range('eyeSeparation','Eye separation · %',100,75,125),range('eyeDensity','Character density',2,1,3,.25),
   color('liveEye','LIVE eye color','#09272b'),color('workEye','WORK eye color','#361423'),color('surfEye','PLAY eye color','#dcfcff'),color('sleepEye','SLEEP eye color','#09272b'),
   text('asciiLight','Light characters','.:+'),text('asciiMid','Middle characters','x*o'),text('asciiDark','Dense characters','O0#@'),
-  range('asciiSpeed','Character flow',1,0,2,.1),{...range('blinkSpeed','Legacy blink multiplier',1,0,2,.1),hidden:true}
+  range('asciiSpeed','Character flow',1,0,2,.1),range('blinkSpeed','Blink frequency',1,0,2,.1)
  ]},
  {id:'body',label:'Shape',description:'Round, diffuse and quietly alive.',fields:[
   range('bodyWidth','Width',338,260,370),range('bodyHeight','Height',300,230,360),range('roundness','Roundness',112,60,150),
@@ -61,10 +58,7 @@ export const DITHER_SETTING_KEYS=DESIGN_FIELDS.filter(f=>f.key.startsWith('dithe
 export const ditherEditorKeys=mode=>['colorMode',...DITHER_SETTING_KEYS,mode+'Background'];
 export const DESIGN_DEFAULTS={...Object.fromEntries(DESIGN_FIELDS.map(f=>[f.key,f.value])),modeOverrides:{}};
 export const DESIGN_MODES=['live','work','surf','sleep'];
-// Geometry/animation are shared; expressions and page-specific eye colors stay scoped.
-export const EYE_SETTING_KEYS=['eyeStyle','eyeSize','characterSize','eyeSeparation','eyeDensity','asciiLight','asciiMid','asciiDark','asciiSpeed','blinkSpeed','eyeBlinkDuration','eyeBlinkInterval','eyeOpenness','eyeGlow','eyeTracking'];
-const NEW_EYE_SETTING_KEYS=['eyeStyle','eyeBlinkDuration','eyeBlinkInterval','eyeOpenness','eyeGlow','eyeTracking'];
-export const scopedSetting=key=>!EYE_SETTING_KEYS.includes(key)&&key!=='studioAuto'&&!key.startsWith('alarm')&&!/^(live|work|surf|sleep)(Color|Background|Eye)$/.test(key);
+export const scopedSetting=key=>key!=='studioAuto'&&!key.startsWith('alarm')&&!/^(live|work|surf|sleep)(Color|Background|Eye)$/.test(key);
 export const formatAlarmTime=settings=>`${settings.alarmHour??7}:${String(settings.alarmMinute??0).padStart(2,'0')} ${settings.alarmMeridiem??'AM'}`;
 export function validateDesign(input){
  if(!input||typeof input!=='object'||Array.isArray(input)||Object.keys(input).some(k=>!Object.hasOwn(DESIGN_DEFAULTS,k)))throw Error('Unknown design setting');
@@ -73,7 +67,6 @@ export function validateDesign(input){
  for(const f of DESIGN_FIELDS){if(!Object.hasOwn(input,f.key))continue;const v=input[f.key];
   if(f.type==='range'&&(!Number.isFinite(v)||v<f.min||v>f.max))throw Error('Invalid '+f.label);
   if(['alarmHour','alarmMinute'].includes(f.key)&&!Number.isInteger(v))throw Error('Use whole numbers for alarm time');
-  if(f.key==='eyeStyle'&&!Number.isInteger(v))throw Error('Use a whole number for Eye Style Generator');
   if(f.type==='checkbox'&&typeof v!=='boolean')throw Error('Invalid '+f.label);
   if(f.type==='color'&&(typeof v!=='string'||!/^#[0-9a-f]{6}$/i.test(v)))throw Error('Invalid '+f.label);
   if(f.type==='text'&&(typeof v!=='string'||v.length<1||v.length>12||!/^[\x21-\x7e]+$/.test(v)))throw Error('Use 1–12 printable characters');
@@ -85,12 +78,9 @@ export function validateDesign(input){
   const overrides=input.modeOverrides;
   if(!overrides||typeof overrides!=='object'||Array.isArray(overrides)||Object.keys(overrides).some(mode=>!DESIGN_MODES.includes(mode)))throw Error('Invalid mode settings');
   for(const [mode,fields]of Object.entries(overrides)){
-   if(!fields||typeof fields!=='object'||Array.isArray(fields)||Object.keys(fields).some(key=>key==='modeOverrides'||!DESIGN_FIELDS.some(f=>f.key===key)||!scopedSetting(key)&&!EYE_SETTING_KEYS.includes(key)))throw Error('Invalid mode setting');
-   const checked=validateDesign(fields);result.modeOverrides[mode]=Object.fromEntries(Object.keys(fields).filter(scopedSetting).map(key=>[key,checked[key]]));
+   if(!fields||typeof fields!=='object'||Array.isArray(fields)||Object.keys(fields).some(key=>key==='modeOverrides'||!DESIGN_FIELDS.some(f=>f.key===key)||!scopedSetting(key)))throw Error('Invalid mode setting');
+   const checked=validateDesign(fields);result.modeOverrides[mode]=Object.fromEntries(Object.keys(fields).map(key=>[key,checked[key]]));
   }
-  // Old per-page eye overrides take precedence in a stable LIVE → WORK → PLAY → SLEEP
-  // order. Canonical saves contain only global eye values, making migration idempotent.
-  for(const key of EYE_SETTING_KEYS){const mode=DESIGN_MODES.find(mode=>Object.hasOwn(overrides[mode]||{},key));if(mode)result[key]=overrides[mode][key];}
  }
  return result;
 }
@@ -125,7 +115,7 @@ export async function loadInitialDesign(readCloud,readCache){
 export const settingHistoryKey=(mode,key)=>(scopedSetting(key)?mode:'global')+'/'+key;
 export function groupSettingKeys(groupId,mode){
  const group=DESIGN_GROUPS.find(g=>g.id===groupId);if(!group||!DESIGN_MODES.includes(mode))throw Error('Invalid settings group');
- return group.fields.filter(f=>!f.hidden&&f.key!=='menuSeconds'&&(!/^(live|work|surf|sleep)(Color|Background|Eye)$/.test(f.key)||f.key.startsWith(mode))&&(!['colorCycle','cycleSeconds','cycle2','cycle3','cycle4','cycle5'].includes(f.key)||mode==='live')).map(f=>f.key);
+ return group.fields.filter(f=>f.key!=='menuSeconds'&&(!/^(live|work|surf|sleep)(Color|Background|Eye)$/.test(f.key)||f.key.startsWith(mode))&&(!['colorCycle','cycleSeconds','cycle2','cycle3','cycle4','cycle5'].includes(f.key)||mode==='live')).map(f=>f.key);
 }
 export const groupSnapshot=(design,mode,groupId)=>Object.fromEntries(groupSettingKeys(groupId,mode).map(key=>[key,modeSetting(design,mode,key)]));
 export function restoreGroupSettings(design,mode,groupId,snapshot){
@@ -134,13 +124,13 @@ export function restoreGroupSettings(design,mode,groupId,snapshot){
 export const designForGroupApply=(applied,draft,mode,groupId)=>restoreGroupSettings(applied,mode,groupId,groupSnapshot(draft,mode,groupId));
 export function designForDitherEditorApply(applied,draft,mode){let next=applied;for(const key of ditherEditorKeys(mode))next=writeModeSetting(next,mode,key,modeSetting(draft,mode,key));return next;}
 // Favorites carry appearance only: never alarms, sensor permissions or STUDIO behavior.
-export const FAVORITE_KEYS=DESIGN_FIELDS.filter(f=>(scopedSetting(f.key)||EYE_SETTING_KEYS.includes(f.key))&&!['sensors','pickup','greetingSeconds','zoom','menuSeconds','holdMs'].includes(f.key)).map(f=>f.key);
+export const FAVORITE_KEYS=DESIGN_FIELDS.filter(f=>scopedSetting(f.key)&&!['sensors','pickup','greetingSeconds','zoom','menuSeconds','holdMs'].includes(f.key)).map(f=>f.key);
 export function captureFavoriteLook(design,mode){
  const d=resolveModeDesign(design,mode);
  return {values:Object.fromEntries(FAVORITE_KEYS.map(key=>[key,d[key]])),color:d[mode+'Color'],background:d[mode+'Background'],eye:d[mode+'Eye']};
 }
 export function validateFavoriteLook(look){
- if(!look||typeof look!=='object'||Array.isArray(look)||Object.keys(look).some(k=>!['values','color','background','eye'].includes(k))||!look.values||typeof look.values!=='object'||Array.isArray(look.values)||Object.keys(look.values).some(k=>!FAVORITE_KEYS.includes(k))||FAVORITE_KEYS.some(k=>!NEW_EYE_SETTING_KEYS.includes(k)&&!Object.hasOwn(look.values,k)))throw Error('Invalid favorite design');
+ if(!look||typeof look!=='object'||Array.isArray(look)||Object.keys(look).some(k=>!['values','color','background','eye'].includes(k))||!look.values||typeof look.values!=='object'||Array.isArray(look.values)||Object.keys(look.values).length!==FAVORITE_KEYS.length||FAVORITE_KEYS.some(k=>!Object.hasOwn(look.values,k)))throw Error('Invalid favorite design');
  const d=validateDesign({...look.values,liveColor:look.color,liveBackground:look.background,liveEye:look.eye});
  if(!look.color||!look.background||!look.eye)throw Error('Incomplete favorite colors');
  return captureFavoriteLook(d,'live');
@@ -153,19 +143,8 @@ export function applyFavoriteLook(design,look,modes){
  }return next;
 }
 export function resolveModeDesign(input,mode){const d=validateDesign(input);if(!DESIGN_MODES.includes(mode))throw Error('Invalid mode');return {...d,...d.modeOverrides[mode],modeOverrides:{}};}
-export function resetEyes(design){
- const next=validateDesign(design);for(const key of EYE_SETTING_KEYS)next[key]=DESIGN_DEFAULTS[key];return validateDesign(next);
-}
-export function randomizeEyes(design,random=Math.random){
- const next=validateDesign(design);
- const unit=()=>{const value=random();if(!Number.isFinite(value)||value<0||value>1)throw Error('Invalid eye random source');return value;};
- const sample=(min,max,step)=>Number((min+Math.round(unit()*(max-min)/step)*step).toFixed(3));
- Object.assign(next,{eyeStyle:sample(0,100,1),eyeSize:sample(90,120,1),eyeSeparation:sample(85,115,1),eyeDensity:sample(1.5,3,.25),eyeBlinkDuration:sample(140,260,10),eyeBlinkInterval:sample(3,8,.1),eyeOpenness:1,eyeGlow:sample(0,2,.25)});
- return validateDesign(next);
-}
 function writeModeSetting(input,mode,key,value){
  if(!DESIGN_MODES.includes(mode)||!DESIGN_FIELDS.some(f=>f.key===key))throw Error('Invalid mode setting');
- input=validateDesign(input);
  return validateDesign(scopedSetting(key)?{...input,modeOverrides:{...input.modeOverrides,[mode]:{...input.modeOverrides?.[mode],[key]:value}}}:{...input,[key]:value});
 }
 export function editModeValue(draft,history,mode,key,value){
@@ -234,7 +213,6 @@ export function designDefinition(base,input){
  p.custom=d;p.eyeSizeMultiplier=1.82*d.eyeSize/100;p.eyeDotMultiplier=.6*d.characterSize/100;p.eyeSampling=d.eyeDensity;
  result.eyes.separation=base.eyes.separation*d.eyeSeparation/100;
  result.eyes.flowSpeed=d.asciiSpeed;result.eyes.blinkSpeed=d.blinkSpeed;result.eyes.asciiPalette=[d.asciiLight,d.asciiMid,d.asciiDark];
- Object.assign(result.eyes,{style:d.eyeStyle,blinkDuration:d.eyeBlinkDuration,blinkInterval:d.eyeBlinkInterval,openness:d.eyeOpenness,glow:d.eyeGlow,tracking:d.eyeTracking});
  Object.assign(result.body,{texture:d.texture,depth:d.depth,brightness:d.brightness,light:d.light,lightTravel:d.lightTravel});
  Object.assign(p.task,{width:d.bodyWidth,height:d.bodyHeight,radius:Math.min(d.roundness,d.bodyWidth/2,d.bodyHeight/2),feather:d.diffusion});
  for(const mode of ['live','work','surf','sleep'])p.modeColors[mode]=d[mode+'Color'];

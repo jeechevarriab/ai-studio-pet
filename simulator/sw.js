@@ -1,8 +1,6 @@
-const CACHE = 'studio-mascot-shell-v3-eyes';
+const CACHE = 'studio-mascot-shell-v3-eye-motion';
 const SHELL = ['/app', '/simulator/style.css', '/simulator/app-view.js', '/simulator/app.js',
-  '/simulator/engine.js', '/simulator/renderer.js', '/simulator/eye-motion.js',
-  '/simulator/design.js', '/simulator/editor.js', '/simulator/dither-editor.js',
-  '/simulator/studio.js', '/simulator/color-finishes.js', '/simulator/react-bits-shaders.js', '/character/expressions.json',
+  '/simulator/engine.js', '/simulator/renderer.js', '/simulator/eye-motion.js', '/character/expressions.json',
   '/scenes/behavior.json', '/manifest.webmanifest', '/icons/mascot.svg',
   '/icons/mascot-192.png', '/icons/mascot-512.png'];
 self.addEventListener('install', event => event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL))));

@@ -14,8 +14,6 @@ let designReady=mascotVersion==='v1';
 document.documentElement.classList.toggle('mascot-v2', mascotVersion === 'v2');
 let state = initialState(), definition, original, rules, activity, transition = null, pointer = null;
 let time = 0, lastTimestamp = 0, previousStatus = '';
-let frameRequest=null,manualBlinkAt=-Infinity,compareEyes=false,appearancePrevious={},appearanceChangedAt=0,manualRestorePause=false,manualPauseAt=0;
-function requestRender(){if(frameRequest===null&&!document.hidden)frameRequest=requestAnimationFrame(frame);}
 let suppressTap = false, tiltAttempted = false, tiltOrigin = null, lastPointerMotion = 0;
 let attention = 0, attentionTarget = 0, activeNotice = null;
 let greetingUntil=0,greeting=0,motionSeenAt=-Infinity;
@@ -28,7 +26,7 @@ let customDesign={...DESIGN_DEFAULTS};
 let sharedDesign={...DESIGN_DEFAULTS},modeDefinitions={};
 let studioReport=null,autoStudioWork=false;
 function restoreModeDesign(){customDesign=resolveModeDesign(sharedDesign,state.mode);definition=modeDefinitions[state.mode]||designDefinition(original,customDesign);state.expression=customDesign.expression.startsWith('touch-')?'auto':customDesign.expression;touchEye=customDesign.expression.startsWith('touch-')?Number(customDesign.expression.slice(6)):-1;previousEye=-1;}
-function setDesign(settings){appearancePrevious=modeDefinitions;appearanceChangedAt=performance.now();sharedDesign=structuredClone(settings);modeDefinitions=Object.fromEntries(MODES.map(mode=>[mode,designDefinition(original,resolveModeDesign(settings,mode))]));restoreModeDesign();updateUI();designReady=true;}
+function setDesign(settings){sharedDesign=structuredClone(settings);modeDefinitions=Object.fromEntries(MODES.map(mode=>[mode,designDefinition(original,resolveModeDesign(settings,mode))]));restoreModeDesign();updateUI();designReady=true;}
 const modeColor = () => (definition.presentationV2?.modeColors || defaultModeColors)[state.mode];
 let surfData = null, surfPending = false;
 
@@ -98,7 +96,6 @@ function revealControls(visible = true) {
   if (mascotVersion !== 'v2') return;
   $('device').classList.toggle('controls-visible', visible);
   attentionTarget = visible ? 1 : 0;
-  requestRender();
   if (!visible) activeNotice = null;
   $('device-message').hidden = !activeNotice || !visible;
   syncPlayPanel();
@@ -137,7 +134,6 @@ async function enableTilt() {
 }
 
 function updateUI() {
-  requestRender();
   activity = {...deriveActivity(state, rules, mascotVersion==='v2'), mode: state.mode};
   if(mascotVersion==='v2'){
     const bg=customDesign[state.mode+'Background'],rgb=[1,3,5].map(i=>parseInt(bg.slice(i,i+2),16));
@@ -181,13 +177,11 @@ function changeMode(mode,fromStudio=false) {
 }
 
 function frame(timestamp) {
-  frameRequest=null;
   const delta = lastTimestamp ? timestamp - lastTimestamp : 0;
   lastTimestamp = timestamp;
-  if(document.hidden)return;
-  if(!designReady)return;
+  if(document.hidden) {requestAnimationFrame(frame);return;}
+  if(!designReady){requestAnimationFrame(frame);return;}
   if (!document.hidden) time = stepTime(time, delta, state.paused, state.speed);
-  if(manualRestorePause&&time>=manualPauseAt){state.paused=true;manualRestorePause=false;updateUI();}
   const poseSmoothing = 1 - Math.exp(-Math.min(delta, 100) / 170);
   attention = reducedMotion.matches ? attentionTarget : attention + (attentionTarget - attention) * poseSmoothing;
   greeting+=(time<greetingUntil&&state.mode==='live'?1-greeting:-greeting)*poseSmoothing;
@@ -198,7 +192,7 @@ function frame(timestamp) {
     motion.y += (motion.targetY - motion.y) * smoothing;
   }
   const eyeBlend = reducedMotion.matches ? 1 : Math.min(1, Math.max(0,(timestamp-eyeChangedAt)/140));
-  const render = current => renderScene(ctx, {activity: current, definition:modeDefinitions[current.mode]||definition, time, reducedMotion: reducedMotion.matches, surf: state.surf, version: mascotVersion, motion, attention, touchEye:current.mode===state.mode?touchEye:-1, previousEye, eyeBlend, greeting, manualBlinkAt, compareDefault:compareEyes, appearanceFrom:appearancePrevious[current.mode], appearanceBlend:state.paused||reducedMotion.matches?1:Math.min(1,(timestamp-appearanceChangedAt)/160)});
+  const render = current => renderScene(ctx, {activity: current, definition:modeDefinitions[current.mode]||definition, time, reducedMotion: reducedMotion.matches, surf: state.surf, version: mascotVersion, motion, attention, touchEye:current.mode===state.mode?touchEye:-1, previousEye, eyeBlend, greeting});
   if (transition && !reducedMotion.matches) {
     const progress = Math.min(1, (timestamp - transition.started) / 330);
     const offset = ease(progress) * 410 * transition.direction;
@@ -210,7 +204,7 @@ function frame(timestamp) {
     if (progress === 1) transition = null;
   } else render(activity);
   document.documentElement.classList.remove('design-pending');
-  if((!state.paused&&!reducedMotion.matches)||Math.abs(attention-attentionTarget)>.001)requestRender();
+  requestAnimationFrame(frame);
 }
 
 function connect() {
@@ -310,17 +304,7 @@ function connect() {
   device.addEventListener('pointercancel', cancelHold);
   device.addEventListener('lostpointercapture', cancelHold);
   device.addEventListener('contextmenu', e => {if(mascotVersion==='v2')e.preventDefault();});
-  document.addEventListener('visibilitychange', () => {lastTimestamp=0;if(document.hidden){if(frameRequest!==null)cancelAnimationFrame(frameRequest);frameRequest=null;}else requestRender();});
-  reducedMotion.addEventListener('change',requestRender);
-  document.addEventListener('mascot-eye-preview',event=>{
-    const action=event.detail?.action;
-    if(action==='pause'){state.paused=true;manualRestorePause=false;}
-    if(action==='play'){state.paused=false;lastTimestamp=0;}
-    if(action==='blink'){manualBlinkAt=time;if(state.paused){manualRestorePause=true;manualPauseAt=time+(customDesign.eyeBlinkDuration??180)+80;state.paused=false;lastTimestamp=0;}}
-    if(action==='compare-start')compareEyes=true;
-    if(action==='compare-end')compareEyes=false;
-    updateUI();requestRender();
-  });
+  document.addEventListener('visibilitychange', () => {lastTimestamp = 0;});
 }
 
 try {
@@ -328,7 +312,7 @@ try {
   if (!characterResponse.ok || !behaviorResponse.ok) throw Error('Character definitions unavailable');
   definition = validateDefinitions(await characterResponse.json()); original = structuredClone(definition);
   rules = validateRules(await behaviorResponse.json());
-  connect(); updateUI(); $('load-status').textContent = ''; requestRender();
+  connect(); updateUI(); $('load-status').textContent = ''; requestAnimationFrame(frame);
   if(mascotVersion==='v2')void connectDesignEditor({preview:setDesign,apply:setDesign,mode:value=>changeMode(value)}).then(result=>{if(!result.loaded)$('load-status').textContent=result.error;});
   if(mascotVersion==='v2')connectStudio({receive:report=>{
     studioReport=report;

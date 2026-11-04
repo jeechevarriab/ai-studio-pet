@@ -1,37 +1,6 @@
-// Pure numeric eye configuration and motion. No DOM, timers, random render state,
-// network or browser effects: the masks/timing can be ported to a framebuffer.
-export const EYE_ARCHETYPES = Object.freeze([
-  'Approved Lilt', 'Orbit', 'Daydream', 'Tall oval', 'Focused',
-  'Soft rectangle', 'Wide curious', 'Angular', 'Asymmetric', 'Horizontal'
-]);
+// Timing and gaze only. All eye types, glyphs and appearance remain in the existing renderer.
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const smooth=v=>{v=clamp(v,0,1);return v*v*(3-2*v);};
-export function eyeStyleAt(value=0) {
-  const v=clamp(Number.isFinite(value)?value:0,0,100),position=v/100*9;
-  const index=Math.min(9,Math.floor(position)),variation=position-index;
-  return {index,name:EYE_ARCHETYPES[index],variation};
-}
-export function eyePairForStyle(value=0) {
-  const {index,variation}=eyeStyleAt(value);
-  if(index===0)return [{shape:'drop',tilt:-.3,pupilX:.1,pupilY:.1},{shape:'drop',tilt:.3,pupilX:-.1,pupilY:.1}];
-  if(index===1)return [{shape:'orbit',tilt:-.16,pupilX:.12,pupilY:0},{shape:'orbit',tilt:.16,pupilX:-.12,pupilY:0}];
-  if(index===2)return [{shape:'crescent',tilt:-.18},{shape:'crescent',tilt:.18}];
-  return [0,1].map(side=>({shape:'generated',style:index,variation,side,tilt:0,pupilX:0,pupilY:0}));
-}
-export function generatedEyeMask(eye,x,y) {
-  const v=eye.variation||0;
-  x/=1-v*.08;
-  switch(eye.style) {
-    case 3:return (x/.57)**2+(y/.95)**2<1;
-    case 4:return x*x+(y/.65)**2<1&&y>-.25+.12*x*(eye.side?1:-1);
-    case 5:return (Math.abs(x)/.8)**4+(Math.abs(y)/.7)**4<1;
-    case 6:return (x/.96)**2+(y/.69)**2<1&&((x-(eye.pupilX||0))/.25)**2+((y-(eye.pupilY||0))/.43)**2>1;
-    case 7:return Math.abs(x)/.95+Math.abs(y)/.86<1&&Math.abs(x)+Math.abs(y)>.34;
-    case 8:return eye.side?Math.abs(y-.12*x)<.22&&Math.abs(x)<.85:(x/.67)**2+(y/.9)**2<1;
-    case 9:return Math.abs(y-(.15-.28*x*x))<.13&&Math.abs(x)<.9;
-    default:return false;
-  }
-}
 const gazeKeys=[[0,0,0],[.85,0,0],[1.06,7,-2],[1.95,7,-2],[2.09,8,-3],[3.35,8,-3],[3.61,-8,-1],[5.05,-8,-1],[5.32,2,5],[6.55,2,5],[6.78,6,-5],[8.05,6,-5],[8.21,5,-4],[9.45,5,-4],[9.69,-6,-4],[11.1,-6,-4],[11.4,0,0],[12.25,0,0],[12.48,7,3],[13.6,7,3],[13.83,-5,2],[14.95,-5,2],[15.18,0,-5],[16.15,0,-5],[16.47,0,0],[18,0,0]];
 function gazeAt(time) {
   const t=((time/1000)%18+18)%18;
