@@ -15,7 +15,8 @@ export async function connectDesignEditor({preview,apply,mode}){
  const labels={live:'LIVE',work:'WORK',surf:'PLAY',sleep:'SLEEP'};
  let favorites={revision:0,items:[]},favoritesLoaded=false,favoritesBusy=false,favoriteList=null,favoriteName=null,favoriteSave=null,favoriteReload=null,undoFavorite=null,favoriteSnapshot=null,activeGroup='colors',targetsTouched=false;
  const favoriteTargets=new Map(),panels=new Map(),tabButtons=new Map();
- let ditherEditor=null,ditherHistory={},pendingDitherStart=null;
+ let ditherEditor=null,ditherHistory={},pendingDitherStart=null,effectsClipboard=null,copyEffectsButton=null,pasteEffectsButton=null;
+ const effectKeys=DITHER_SETTING_KEYS.filter(key=>!/^dither(Preset|WaveColor|Background|Transparent|Palette.*)$/.test(key));
  const parameterEditors=new Map();let parameterHistory={},pendingParameterStart={};
  const parameterStack=id=>parameterHistory[(id==='alarm'?'shared':selectedMode)+'/'+id]||=({undo:[],redo:[]});
  function changeParameter(group,key,value,newStep=true){
@@ -108,6 +109,8 @@ export async function connectDesignEditor({preview,apply,mode}){
   if(cloudApplyButton)cloudApplyButton.disabled=loading||saving||!owner||!(defaultPending[selectedMode]?defaultSettingKeys(selectedMode):cloudSettingKeys(selectedMode)).some(key=>fieldValue(draft,key)!==fieldValue(applied,key));
   if(cloudApplyButton)cloudApplyButton.textContent=defaultPending[selectedMode]?'Apply default':'Apply Cloud look';
   if(defaultButton)defaultButton.disabled=loading||saving||!defaultDesign;
+  if(copyEffectsButton)copyEffectsButton.disabled=loading||saving;
+  if(pasteEffectsButton)pasteEffectsButton.disabled=loading||saving||!effectsClipboard;
   if(undoRandomButton)undoRandomButton.disabled=loading||saving||!randomHistory[selectedMode]?.length;
   if(applyRandomButton)applyRandomButton.disabled=loading||saving||!owner||!ditherEditorKeys(selectedMode).some(key=>fieldValue(draft,key)!==fieldValue(applied,key));
  };
@@ -165,6 +168,11 @@ export async function connectDesignEditor({preview,apply,mode}){
     randomButton=button('Randomize Dither',()=>{recordDither();const result=randomizeDither(draft,selectedMode);const stack=randomHistory[selectedMode]||=[];stack.push(result.snapshot);if(stack.length>50)stack.shift();draft=result.draft;preview(draft);refresh();notify('Random Dither look previewed for this mode. Apply Dither look to save.');});
     undoRandomButton=button('Undo randomize',()=>{const previous=randomHistory[selectedMode]?.pop();if(previous){draft=restoreDitherRandomization(draft,selectedMode,previous);preview(draft);refresh();notify('Previous Dither look restored. Apply to save.');}});
     applyRandomButton=button('Apply Dither look',()=>void saveDesign('ditherLook'));
+    copyEffectsButton=button('⧉ Copy Effects',()=>{effectsClipboard={mode:selectedMode,values:Object.fromEntries(effectKeys.map(key=>[key,fieldValue(draft,key)]))};refresh();notify('Effects copied from '+labels[selectedMode]+'. Select another mode and Paste Effects.');});
+    copyEffectsButton.title='Copy Dither effects without colors';copyEffectsButton.setAttribute('aria-label','Copy Effects');
+    pasteEffectsButton=button('▣ Paste Effects',()=>{if(loading||saving||!effectsClipboard)return;recordDither();pendingDitherStart=null;for(const [key,value]of Object.entries(effectsClipboard.values))draft=editModeValue(draft,history,selectedMode,key,value);draft=editModeValue(draft,history,selectedMode,'ditherPreset','custom');preview(draft);refresh();notify('Effects pasted from '+labels[effectsClipboard.mode]+'. Colors preserved. Apply Dither look to save; Undo restores the previous effects.');});
+    pasteEffectsButton.title='Paste Dither effects, preserving this mode’s colors';pasteEffectsButton.setAttribute('aria-label','Paste Effects');
+    actions.append(copyEffectsButton,pasteEffectsButton);
     actions.append(randomButton,applyRandomButton,button('Save to Favorites',()=>{showGroup('favorites');favoriteName.focus();}));section.append(actions);
     description.textContent='App background colors the page. Effect background and the palette color the mascot. Apply saves this page’s complete look.';
     ditherEditor=createDitherEditor({edit:changeDither,undoField:key=>undoField(group,key),applyField,undo:()=>stepDither('undo'),redo:()=>stepDither('redo'),reset:()=>{if(loading||saving)return;recordDither();draft=restoreDitherEditor(Object.fromEntries(ditherEditorKeys(selectedMode).map(key=>[key,key==='colorMode'?'dither':DESIGN_DEFAULTS[key]])));preview(draft);refresh();notify('Default Dither settings previewed. Undo restores your previous look.');}});
