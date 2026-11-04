@@ -1,9 +1,9 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {DESIGN_DEFAULTS,groupSettingKeys,groupSnapshot,restoreGroupSettings,designForGroupApply,editModeValue,resolveModeDesign,undoModeValue,editDitherSpectrum,activeDitherSpectrum,designSignature,designForDitherEditorApply} from '../simulator/design.js';
 
-test('panel Apply changes only the selected category and page',()=>{
+test('Face panel Apply shares eye geometry while retaining unrelated page drafts',()=>{
  let draft=editModeValue(DESIGN_DEFAULTS,{},'work','eyeSize',120);draft=editModeValue(draft,{},'work','bodyWidth',350);draft=editModeValue(draft,{},'surf','eyeSize',80);
- const saved=designForGroupApply(DESIGN_DEFAULTS,draft,'work','face');assert.equal(resolveModeDesign(saved,'work').eyeSize,120);assert.equal(resolveModeDesign(saved,'work').bodyWidth,338);assert.equal(resolveModeDesign(saved,'surf').eyeSize,100);
+ const saved=designForGroupApply(DESIGN_DEFAULTS,draft,'work','face');assert.equal(resolveModeDesign(saved,'work').eyeSize,80);assert.equal(resolveModeDesign(saved,'work').bodyWidth,338);assert.equal(resolveModeDesign(saved,'surf').eyeSize,80);
 });
 test('Color panel snapshots include the current palette only and Reset/Undo preserve other pages',()=>{
  const base={...DESIGN_DEFAULTS,liveColor:'#123456',workColor:'#abcdef'};

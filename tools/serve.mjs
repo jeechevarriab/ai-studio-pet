@@ -30,6 +30,7 @@ const assets = new Map([
   ['/simulator/style.css', ['simulator/style.css', 'text/css']],
   ['/simulator/app.js', ['simulator/app.js', 'text/javascript']],
   ['/simulator/engine.js', ['simulator/engine.js', 'text/javascript']],
+  ['/simulator/eye-motion.js', ['simulator/eye-motion.js', 'text/javascript']],
   ['/simulator/renderer.js', ['simulator/renderer.js', 'text/javascript']],
   ['/character/expressions.json', ['character/expressions.json', 'application/json']],
   ['/character/eye-expression-sheet.svg', ['character/eye-expression-sheet.svg', 'image/svg+xml']],

@@ -1,0 +1,53 @@
+import {writeFile,mkdir} from 'node:fs/promises';
+import {fileURLToPath} from 'node:url';
+import {createRequire} from 'node:module';
+import {startEyePreview} from './eye-integration-preview.mjs';
+const root=fileURLToPath(new URL('../',import.meta.url)),out=new URL('../docs/eye-integration/',import.meta.url);
+const require=createRequire('C:/Users/Chapito/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/package.json');
+const {chromium}=require('playwright');
+await mkdir(out,{recursive:true});
+const fixture=await startEyePreview(),browser=await chromium.launch({executablePath:'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',headless:true});
+const page=await browser.newPage({viewport:{width:1440,height:1000},serviceWorkers:'block'});
+page.setDefaultTimeout(3000);const errors=[],report={};page.on('pageerror',e=>errors.push(e.message));
+await page.addInitScript(()=>{window.__rafCalls=0;const raf=window.requestAnimationFrame.bind(window);window.requestAnimationFrame=cb=>{window.__rafCalls++;return raf(cb);};});
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+const field=async(key,value)=>page.locator('#setting-'+key).evaluate((el,value)=>{if(el.type==='checkbox')el.checked=value;else el.value=String(value);el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}));},value);
+try{
+ await page.goto(fixture.url+'/customize');await page.getByRole('tab',{name:'Face',exact:true}).click();
+ await page.getByRole('button',{name:'Pause eyes',exact:true}).click();await wait(100);
+ const a=await page.evaluate(()=>window.__rafCalls);await wait(180);const b=await page.evaluate(()=>window.__rafCalls);report.pauseFrames={before:a,after:b,passed:a===b};
+ report.controls=[];for(const[key,value]of Object.entries({eyeStyle:60,eyeBlinkDuration:260,eyeBlinkInterval:7,eyeOpenness:.65,eyeGlow:1.5,eyeSize:112,eyeSeparation:90,eyeDensity:2.75,eyeTracking:false})){
+  await field(key,value);report.controls.push({key,value:await page.locator('#setting-'+key).evaluate(e=>e.type==='checkbox'?e.checked:Number(e.value))});
+ }
+ const bodyWidth=fixture.state().settings.bodyWidth;
+ await page.locator('#edit-face').locator('.parameter-apply').click();
+ for(let i=0;i<30&&fixture.state().writes===0;i++)await wait(50);
+ if(fixture.state().writes!==1)throw Error('Face save did not persist exactly once');
+ const saved=fixture.state();report.save={writes:saved.writes,style:saved.settings.eyeStyle,bodyWidthUnchanged:saved.settings.bodyWidth===bodyWidth};
+ await page.reload();await page.getByRole('tab',{name:'Face',exact:true}).click();
+ report.reload=Number(await page.locator('#setting-eyeStyle').inputValue());
+ await page.getByRole('button',{name:'WORK',exact:true}).click();report.workStyle=Number(await page.locator('#setting-eyeStyle').inputValue());
+ await page.getByRole('button',{name:'PLAY',exact:true}).click();report.surfStyle=Number(await page.locator('#setting-eyeStyle').inputValue());
+ await page.getByRole('button',{name:'SLEEP',exact:true}).click();report.sleepStyle=Number(await page.locator('#setting-eyeStyle').inputValue());
+ await page.getByRole('button',{name:'LIVE',exact:true}).click();
+ await page.getByRole('button',{name:'Reset Eyes',exact:true}).click();report.reset=Number(await page.locator('#setting-eyeStyle').inputValue());
+ await page.getByRole('button',{name:'Randomize Eyes',exact:true}).click();report.randomize=Number(await page.locator('#setting-eyeStyle').inputValue());
+ await page.getByRole('button',{name:'Compare approved default',exact:true}).click();
+ await page.getByRole('button',{name:'Back to edited eyes',exact:true}).click();report.compare=true;
+ await page.getByRole('button',{name:'Pause eyes',exact:true}).click();
+ await page.getByRole('button',{name:'Blink',exact:true}).click();await wait(700);
+ const c=await page.evaluate(()=>window.__rafCalls);await wait(180);const d=await page.evaluate(()=>window.__rafCalls);report.manualBlinkReturnsToPause=c===d;
+ await page.getByRole('button',{name:'Play eyes',exact:true}).click();
+ await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,get:()=>true});document.dispatchEvent(new Event('visibilitychange'));});
+ const hiddenA=await page.evaluate(()=>window.__rafCalls);await wait(180);const hiddenB=await page.evaluate(()=>window.__rafCalls);report.hiddenFrames={before:hiddenA,after:hiddenB,passed:hiddenA===hiddenB};
+ await page.evaluate(()=>{delete document.hidden;document.dispatchEvent(new Event('visibilitychange'));});
+ await page.getByRole('button',{name:'Pause eyes',exact:true}).click();
+ await field('eyeStyle',60);await field('eyeOpenness',1);await field('eyeTracking',true);
+ await page.screenshot({path:fileURLToPath(new URL('editor-desktop.png',out)),fullPage:true});
+ await page.setViewportSize({width:390,height:844});await page.screenshot({path:fileURLToPath(new URL('editor-mobile.png',out)),fullPage:true});
+ report.mobile=await page.evaluate(()=>({overflow:document.documentElement.scrollWidth>innerWidth,buttons:[...document.querySelectorAll('.eye-preview-actions button')].map(b=>({text:b.textContent,height:b.getBoundingClientRect().height}))}));
+ report.errors=errors;
+ report.passed=report.pauseFrames.passed&&report.hiddenFrames.passed&&report.manualBlinkReturnsToPause&&report.save.bodyWidthUnchanged&&report.reload===60&&report.workStyle===60&&report.surfStyle===60&&report.sleepStyle===60&&report.reset===0&&!report.mobile.overflow&&errors.length===0;
+}catch(error){report.error=error.message;report.errors=errors;report.passed=false;await page.screenshot({path:fileURLToPath(new URL('qa-failure.png',out)),fullPage:true});}
+await writeFile(new URL('browser-validation.json',out),JSON.stringify(report,null,2));console.log(JSON.stringify(report));
+await browser.close();await new Promise(r=>fixture.server.close(r));if(!report.passed)process.exitCode=1;

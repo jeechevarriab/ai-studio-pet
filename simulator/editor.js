@@ -1,6 +1,7 @@
 import {DESIGN_GROUPS,DESIGN_DEFAULTS,DESIGN_MODES,FAVORITE_KEYS,captureFavoriteLook,applyFavoriteLook,DITHER_SETTING_KEYS,validateDesign,editModeValue,undoModeValue,designForModeApply,modeSetting,settingHistoryKey,reconcileSavedDesign,randomizeDither,restoreDitherRandomization,loadInitialDesign,cloudSettingKeys,randomizeCloud,restoreCloudRandomization,defaultSettingKeys,restoreCloudDefault} from './design.js';
 import {editDitherSpectrum,resolveModeDesign,designSignature,groupSettingKeys,groupSnapshot,restoreGroupSettings,designForGroupApply,DITHER_SPECTRUM_KEYS,ditherEditorKeys,designForDitherEditorApply} from './design.js';
 import {createDitherEditor} from './dither-editor.js';
+import {EYE_SETTING_KEYS,resetEyes,randomizeEyes} from './design.js';
 export async function connectDesignEditor({preview,apply,mode}){
  const editing=location.pathname==='/customize';
  let selectedMode='live';
@@ -17,19 +18,32 @@ export async function connectDesignEditor({preview,apply,mode}){
  const favoriteTargets=new Map(),panels=new Map(),tabButtons=new Map();
  let ditherEditor=null,ditherHistory={},pendingDitherStart=null;
  const parameterEditors=new Map();let parameterHistory={},pendingParameterStart={};
+ let eyePaused=false,eyeComparing=false,eyePauseButton=null,eyeCompareButton=null;
+ const eyePreviewButtons=[];
+ const eyePreview=action=>document.dispatchEvent(new CustomEvent('mascot-eye-preview',{detail:{action}}));
+ const endEyeCompare=()=>{if(eyeComparing){eyeComparing=false;eyePreview('compare-end');}};
  const parameterStack=id=>parameterHistory[(id==='alarm'?'shared':selectedMode)+'/'+id]||=({undo:[],redo:[]});
+ function previewEyes(next,message){
+  if(loading||saving)return;endEyeCompare();
+  if(designSignature(next)!==designSignature(draft)){
+   const stack=parameterStack('face');stack.undo.push(groupSnapshot(draft,selectedMode,'face'));if(stack.undo.length>50)stack.undo.shift();stack.redo=[];delete pendingParameterStart.face;
+   for(const key of EYE_SETTING_KEYS)if(fieldValue(next,key)!==fieldValue(draft,key))draft=editModeValue(draft,history,selectedMode,key,fieldValue(next,key));
+  }
+  preview(draft);refresh();notify(message);
+ }
  function changeParameter(group,key,value,newStep=true){
   if(loading||saving)return;try{
+   if(group.id==='face')endEyeCompare();
    if(newStep)pendingParameterStart[group.id]={mode:selectedMode,snapshot:groupSnapshot(draft,selectedMode,group.id)};
    const next=editModeValue(draft,pendingParameterStart[group.id]?.mode===selectedMode?history:{},selectedMode,key,value);if(designSignature(next)===designSignature(draft))return;
    if(pendingParameterStart[group.id]?.mode===selectedMode){const stack=parameterStack(group.id);stack.undo.push(pendingParameterStart[group.id].snapshot);if(stack.undo.length>50)stack.undo.shift();stack.redo=[];delete pendingParameterStart[group.id];}
    draft=next;preview(draft);refresh();notify('Previewing '+group.label.toLowerCase()+' changes. Apply this panel to save.');
   }catch(error){notify(error.message);}
  }
- function stepParameter(group,direction){const stack=parameterStack(group.id),snapshot=stack[direction].pop();if(!snapshot)return;stack[direction==='undo'?'redo':'undo'].push(groupSnapshot(draft,selectedMode,group.id));draft=restoreGroupSettings(draft,selectedMode,group.id,snapshot);delete pendingParameterStart[group.id];preview(draft);refresh();notify((direction==='undo'?'Previous':'Next')+' '+group.label.toLowerCase()+' settings restored. Apply to save.');}
+ function stepParameter(group,direction){const stack=parameterStack(group.id),snapshot=stack[direction].pop();if(!snapshot)return;if(group.id==='face')endEyeCompare();stack[direction==='undo'?'redo':'undo'].push(groupSnapshot(draft,selectedMode,group.id));draft=restoreGroupSettings(draft,selectedMode,group.id,snapshot);delete pendingParameterStart[group.id];preview(draft);refresh();notify((direction==='undo'?'Previous':'Next')+' '+group.label.toLowerCase()+' settings restored. Apply to save.');}
  const isSpectrumKey=key=>/^ditherPalette(?:Count|\d+)?$/.test(key);
  const fieldState=key=>{const changed=(isSpectrumKey(key)?DITHER_SPECTRUM_KEYS.filter(k=>!['colorMode','ditherPreset'].includes(k)):[key]).some(k=>fieldValue(draft,k)!==fieldValue(applied,k)),feedback=saveFeedback?.mode===selectedMode&&(saveFeedback.key===key||saveFeedback.key==='ditherSpectrum'&&isSpectrumKey(key))?saveFeedback:null;return {canUndo:!!history[settingHistoryKey(selectedMode,key)]?.length,canApply:!loading&&!saving&&owner&&changed,savePhase:feedback?.phase==='saved'&&changed||feedback?.phase==='error'&&!changed?null:feedback?.phase,error:feedback?.error};};
- function undoField(group,key){if(loading||saving||!history[settingHistoryKey(selectedMode,key)]?.length)return;if(group.id==='dither')recordDither();else{const stack=parameterStack(group.id);stack.undo.push(groupSnapshot(draft,selectedMode,group.id));if(stack.undo.length>50)stack.undo.shift();stack.redo=[];}draft=undoModeValue(draft,history,selectedMode,key);preview(draft);refresh();notify('Previous parameter value restored. Apply to save.');}
+ function undoField(group,key){if(loading||saving||!history[settingHistoryKey(selectedMode,key)]?.length)return;if(group.id==='face')endEyeCompare();if(group.id==='dither')recordDither();else{const stack=parameterStack(group.id);stack.undo.push(groupSnapshot(draft,selectedMode,group.id));if(stack.undo.length>50)stack.undo.shift();stack.redo=[];}draft=undoModeValue(draft,history,selectedMode,key);preview(draft);refresh();notify('Previous parameter value restored. Apply to save.');}
  const applyField=key=>void saveDesign(isSpectrumKey(key)?'ditherSpectrum':key);
  const ditherSnapshot=()=>Object.fromEntries(ditherEditorKeys(selectedMode).map(key=>[key,fieldValue(draft,key)]));
  const restoreDitherEditor=snapshot=>{let next=restoreDitherRandomization(draft,selectedMode,snapshot);if(Object.hasOwn(snapshot,selectedMode+'Background'))next=editModeValue(next,{},selectedMode,selectedMode+'Background',snapshot[selectedMode+'Background']);return next;};
@@ -46,7 +60,7 @@ export async function connectDesignEditor({preview,apply,mode}){
  }
  function stepDither(direction){const stack=ditherStack(),previous=stack[direction].pop();if(!previous)return;stack[direction==='undo'?'redo':'undo'].push(ditherSnapshot());draft=restoreDitherEditor(previous);pendingDitherStart=null;preview(draft);refresh();notify((direction==='undo'?'Previous':'Next')+' Dither look restored. Apply Dither look to save.');}
  const targets=()=>[...favoriteTargets].filter(([,input])=>input.checked).map(([value])=>value);
- const showGroup=id=>{activeGroup=id;for(const [key,panel]of panels)panel.hidden=key!==id;for(const [key,tab]of tabButtons){tab.setAttribute('aria-selected',String(key===id));tab.tabIndex=key===id?0:-1;}refresh();};
+ const showGroup=id=>{if(id!=='face')endEyeCompare();activeGroup=id;for(const [key,panel]of panels)panel.hidden=key!==id;for(const [key,tab]of tabButtons){tab.setAttribute('aria-selected',String(key===id));tab.tabIndex=key===id?0:-1;}refresh();};
  const favoriteSelection=mode=>({mode,keys:[...FAVORITE_KEYS,mode+'Color',mode+'Background',mode+'Eye']});
  function favoriteThumbnail(){try{const source=document.getElementById('pet-canvas'),canvas=document.createElement('canvas');canvas.width=96;canvas.height=118;canvas.getContext('2d').drawImage(source,0,0,96,118);const result=canvas.toDataURL('image/jpeg',.7);return result.length<=20000?result:undefined;}catch{return undefined;}}
  async function loadFavorites(){
@@ -80,6 +94,9 @@ export async function connectDesignEditor({preview,apply,mode}){
  const refresh=()=>{
   const dirty=designSignature(draft)!==designSignature(applied);
   if(modeHint)modeHint.textContent='Editing '+labels[selectedMode]+' · Changes preview here. Apply saves across devices.';
+  for(const control of eyePreviewButtons)control.disabled=loading||saving;
+  if(eyePauseButton){eyePauseButton.textContent=eyePaused?'Play eyes':'Pause eyes';eyePauseButton.setAttribute('aria-pressed',String(eyePaused));}
+  if(eyeCompareButton){eyeCompareButton.textContent=eyeComparing?'Back to edited eyes':'Compare approved default';eyeCompareButton.setAttribute('aria-pressed',String(eyeComparing));}
   if(ditherEditor&&activeGroup==='dither')ditherEditor.refresh(resolveModeDesign(draft,selectedMode),{mode:selectedMode,fieldState,canEdit:!loading&&!saving,canUndo:!!ditherStack().undo.length,canRedo:!!ditherStack().redo.length});
   for(const [id,editor]of parameterEditors){if(id!==activeGroup)continue;const stack=parameterStack(id),changed=groupSettingKeys(id,selectedMode).some(key=>fieldValue(draft,key)!==fieldValue(applied,key)),feedback=saveFeedback?.mode===selectedMode&&saveFeedback.key==='group:'+id?saveFeedback:null;editor.refresh(resolveModeDesign(draft,selectedMode),{fieldState,mode:selectedMode,canEdit:!loading&&!saving,canUndo:!!stack.undo.length,canRedo:!!stack.redo.length,canApply:!loading&&!saving&&owner&&changed,savePhase:changed&&feedback?.phase==='saved'?null:feedback?.phase});}
   if(!targetsTouched)for(const [value,input]of favoriteTargets)input.checked=value===selectedMode;
@@ -141,9 +158,9 @@ export async function connectDesignEditor({preview,apply,mode}){
   const close=document.createElement('a');close.href='/app';close.target='_blank';close.rel='noopener';close.textContent='Open Mascot ↗';header.append(close);shell.append(header);
   accessNotice=document.createElement('div');accessNotice.className='editor-access';accessNotice.setAttribute('role','status');accessNotice.textContent='Connecting to your saved design…';header.append(accessNotice);
   const modes=document.createElement('div');modes.className='editor-mode-picker';modes.setAttribute('aria-label','Page to edit');
-  for(const [value,label]of Object.entries(labels)){const b=button(label,()=>{if(loading)return;selectedMode=value;mode(value);preview(draft);refresh();modes.querySelectorAll('button').forEach(b=>{b.classList.toggle('selected',b.textContent===label);b.setAttribute('aria-pressed',String(b.textContent===label));});});b.setAttribute('aria-pressed',String(value==='live'));modes.append(b);}
+  for(const [value,label]of Object.entries(labels)){const b=button(label,()=>{if(loading)return;endEyeCompare();selectedMode=value;mode(value);preview(draft);refresh();modes.querySelectorAll('button').forEach(b=>{b.classList.toggle('selected',b.textContent===label);b.setAttribute('aria-pressed',String(b.textContent===label));});});b.setAttribute('aria-pressed',String(value==='live'));modes.append(b);}
   modes.firstChild.classList.add('selected');shell.append(modes);
-  document.addEventListener('mascot-mode-change',event=>{if(!DESIGN_MODES.includes(event.detail?.mode))return;selectedMode=event.detail.mode;modes.querySelectorAll('button').forEach(b=>{b.classList.toggle('selected',b.textContent===labels[selectedMode]);b.setAttribute('aria-pressed',String(b.textContent===labels[selectedMode]));});refresh();});
+  document.addEventListener('mascot-mode-change',event=>{if(!DESIGN_MODES.includes(event.detail?.mode))return;endEyeCompare();selectedMode=event.detail.mode;modes.querySelectorAll('button').forEach(b=>{b.classList.toggle('selected',b.textContent===labels[selectedMode]);b.setAttribute('aria-pressed',String(b.textContent===labels[selectedMode]));});refresh();});
   modeHint=document.createElement('p');modeHint.className='editor-description';shell.append(modeHint);
   const tabs=document.createElement('nav');tabs.className='editor-tabs';tabs.setAttribute('aria-label','Customization features');tabs.setAttribute('role','tablist');shell.append(tabs);
   tabs.addEventListener('keydown',event=>{if(!['ArrowRight','ArrowLeft','Home','End'].includes(event.key))return;const buttons=[...tabButtons.values()],index=buttons.indexOf(document.activeElement);if(index<0)return;event.preventDefault();const next=event.key==='Home'?0:event.key==='End'?buttons.length-1:(index+(event.key==='ArrowRight'?1:-1)+buttons.length)%buttons.length;buttons[next].click();buttons[next].focus();});
@@ -170,7 +187,20 @@ export async function connectDesignEditor({preview,apply,mode}){
     ditherEditor=createDitherEditor({edit:changeDither,undoField:key=>undoField(group,key),applyField,undo:()=>stepDither('undo'),redo:()=>stepDither('redo'),reset:()=>{if(loading||saving)return;recordDither();draft=restoreDitherEditor(Object.fromEntries(ditherEditorKeys(selectedMode).map(key=>[key,key==='colorMode'?'dither':DESIGN_DEFAULTS[key]])));preview(draft);refresh();notify('Default Dither settings previewed. Undo restores your previous look.');}});
     section.append(ditherEditor.element);shell.append(section);continue;
    }
-   const parameterEditor=createDitherEditor({group,edit:(key,value,newStep)=>changeParameter(group,key,value,newStep),undoField:key=>undoField(group,key),applyField,undo:()=>stepParameter(group,'undo'),redo:()=>stepParameter(group,'redo'),apply:()=>void saveDesign('group:'+group.id),reset:()=>{if(loading||saving)return;const stack=parameterStack(group.id);stack.undo.push(groupSnapshot(draft,selectedMode,group.id));if(stack.undo.length>50)stack.undo.shift();stack.redo=[];draft=restoreGroupSettings(draft,selectedMode,group.id,groupSnapshot(DESIGN_DEFAULTS,selectedMode,group.id));preview(draft);refresh();notify(group.label+' defaults previewed for this page. Undo restores your previous settings.');}});
+   const resetParameters=()=>{if(loading||saving)return;if(group.id==='face')endEyeCompare();const stack=parameterStack(group.id);stack.undo.push(groupSnapshot(draft,selectedMode,group.id));if(stack.undo.length>50)stack.undo.shift();stack.redo=[];delete pendingParameterStart[group.id];draft=restoreGroupSettings(draft,selectedMode,group.id,groupSnapshot(DESIGN_DEFAULTS,selectedMode,group.id));preview(draft);refresh();notify(group.id==='face'?'Approved default eyes previewed. Apply Face settings to save; Undo restores your edited eyes.':group.label+' defaults previewed for this page. Undo restores your previous settings.');};
+   if(group.id==='face'){
+    const eyeSection=document.createElement('section');eyeSection.className='editor-eye-preview';eyeSection.setAttribute('aria-labelledby','editor-eyes-heading');
+    const eyeHeading=document.createElement('h3');eyeHeading.id='editor-eyes-heading';eyeHeading.textContent='Eyes';
+    const eyeNote=document.createElement('p');eyeNote.className='editor-description';eyeNote.textContent='Shared eye style across all pages. Drag Eye Style Generator to explore; 0 restores the approved geometry. Preview controls do not change your saved design.';
+    const actions=document.createElement('div');actions.className='editor-eye-actions';
+    const randomEyes=button('Randomize Eyes',()=>{if(loading||saving)return;let next=randomizeEyes(draft);if(next.eyeStyle===fieldValue(draft,'eyeStyle'))next=editModeValue(next,{},selectedMode,'eyeStyle',(next.eyeStyle+11)%101);previewEyes(next,'New eyes previewed across all pages. Apply Face settings to save.');});
+    const resetEyeButton=button('Reset Eyes',()=>previewEyes(resetEyes(draft),'Approved default eyes previewed. Apply Face settings to save; Undo restores your edited eyes.'));
+    eyePauseButton=button('Pause eyes',()=>{eyePaused=!eyePaused;eyePreview(eyePaused?'pause':'play');refresh();});eyePauseButton.setAttribute('aria-pressed','false');
+    const blink=button('Blink',()=>eyePreview('blink'));
+    eyeCompareButton=button('Compare approved default',()=>{eyeComparing=!eyeComparing;eyePreview(eyeComparing?'compare-start':'compare-end');refresh();});eyeCompareButton.setAttribute('aria-pressed','false');
+    eyePreviewButtons.push(randomEyes,resetEyeButton,eyePauseButton,blink,eyeCompareButton);actions.append(...eyePreviewButtons);eyeSection.append(eyeHeading,eyeNote,actions);section.append(eyeSection);
+   }
+   const parameterEditor=createDitherEditor({group:{...group,fields:group.fields.filter(field=>!field.hidden)},edit:(key,value,newStep)=>changeParameter(group,key,value,newStep),undoField:key=>undoField(group,key),applyField,undo:()=>stepParameter(group,'undo'),redo:()=>stepParameter(group,'redo'),apply:()=>void saveDesign('group:'+group.id),reset:resetParameters});
    parameterEditors.set(group.id,parameterEditor);section.append(parameterEditor.element);shell.append(section);continue;
 
   }
@@ -186,7 +216,7 @@ export async function connectDesignEditor({preview,apply,mode}){
   const favoriteTools=document.createElement('div');favoriteTools.className='favorite-actions';favoriteReload=button('Reload favorites',()=>void loadFavorites());undoFavorite=button('Undo favorite preview',()=>{if(!favoriteSnapshot)return;for(const target of favoriteSnapshot.modes)draft=applyFavoriteLook(draft,captureFavoriteLook(favoriteSnapshot.design,target),[target]);favoriteSnapshot=null;preview(draft);refresh();notify('Favorite preview undone. Apply to save any remaining edits.');});favoriteTools.append(favoriteReload,undoFavorite);
   favoriteList=document.createElement('div');favoriteList.className='favorite-list';favoriteList.textContent='Sign in as owner to load and save your favorites.';favoritePanel.append(favoriteHeading,favoriteCopy,favoriteForm,targetBox,note,favoriteTools,favoriteList);shell.append(favoritePanel);
   const footer=document.createElement('footer');footer.className='editor-actions';saveFooter=footer;
-  const discard=button('Discard previews',()=>{if(loading||saving)return;draft=structuredClone(applied);history={};randomHistory={};cloudHistory={};defaultPending={};favoriteSnapshot=null;ditherHistory={};pendingDitherStart=null;parameterHistory={};pendingParameterStart={};saveFeedback=null;ditherEditor?.closePicker();for(const editor of parameterEditors.values())editor.closePicker();preview(draft);refresh();notify('Back to your saved design.');});
+  const discard=button('Discard previews',()=>{if(loading||saving)return;endEyeCompare();draft=structuredClone(applied);history={};randomHistory={};cloudHistory={};defaultPending={};favoriteSnapshot=null;ditherHistory={};pendingDitherStart=null;parameterHistory={};pendingParameterStart={};saveFeedback=null;ditherEditor?.closePicker();for(const editor of parameterEditors.values())editor.closePicker();preview(draft);refresh();notify('Back to your saved design.');});
   discardButton=discard;
   saveButton=button('Save all changes',()=>void saveDesign(),'editor-apply');footer.append(discard,saveButton);header.append(status);shell.append(footer);document.body.append(shell);
   window.addEventListener('beforeunload',event=>{if(!loading&&designSignature(draft)!==designSignature(applied)){event.preventDefault();event.returnValue='';}});

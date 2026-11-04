@@ -1,0 +1,69 @@
+{
+  "pauseFrames": {
+    "before": 6,
+    "after": 6,
+    "passed": true
+  },
+  "controls": [
+    {
+      "key": "eyeStyle",
+      "value": 60
+    },
+    {
+      "key": "eyeBlinkDuration",
+      "value": 260
+    },
+    {
+      "key": "eyeBlinkInterval",
+      "value": 7
+    },
+    {
+      "key": "eyeOpenness",
+      "value": 0.65
+    },
+    {
+      "key": "eyeGlow",
+      "value": 1.5
+    },
+    {
+      "key": "eyeSize",
+      "value": 112
+    },
+    {
+      "key": "eyeSeparation",
+      "value": 90
+    },
+    {
+      "key": "eyeDensity",
+      "value": 2.75
+    },
+    {
+      "key": "eyeTracking",
+      "value": false
+    }
+  ],
+  "save": {
+    "writes": 1,
+    "style": 60,
+    "bodyWidthUnchanged": true
+  },
+  "reload": 60,
+  "workStyle": 60,
+  "surfStyle": 60,
+  "sleepStyle": 60,
+  "reset": 0,
+  "randomize": 81,
+  "compare": true,
+  "manualBlinkReturnsToPause": true,
+  "hiddenFrames": {
+    "before": 82,
+    "after": 82,
+    "passed": true
+  },
+  "mobile": {
+    "overflow": false,
+    "buttons": []
+  },
+  "errors": [],
+  "passed": true
+}

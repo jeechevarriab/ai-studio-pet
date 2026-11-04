@@ -1,0 +1,14 @@
+[
+  {
+    "file": "editor-demo.mp4",
+    "durationSeconds": 19.695733333333333,
+    "tracks": [
+      {
+        "samples": 592,
+        "timescale": 30000,
+        "frameRateAverage": 30.057271287182335
+      }
+    ],
+    "durationHeaderFinalized": true
+  }
+]
