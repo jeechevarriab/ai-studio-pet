@@ -1,0 +1,15 @@
+{
+  "bodyBytesChanged": 0,
+  "allTenStylesDistinct": true,
+  "down": true,
+  "up": true,
+  "released": true,
+  "menu": true,
+  "projectionVertical": true,
+  "tapMenuAndZoom": true,
+  "touchDragPreservesMenuState": true,
+  "editorEyeListPresent": true,
+  "settingsWrites": 0,
+  "errors": [],
+  "physicalIphoneTested": false
+}

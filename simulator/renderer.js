@@ -1,5 +1,6 @@
 import {drawColorFinish,finishName} from './color-finishes.js';
 import {eyeMotionAt} from './eye-motion.js';
+import {projectEyePoint,poseAt} from './eye-surface.js';
 const TAU = Math.PI * 2;
 function rounded(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); }
 function dot(ctx, x, y, radius) { ctx.beginPath(); ctx.arc(x, y, radius, 0, TAU); ctx.fill(); }
@@ -233,8 +234,15 @@ function asciiEyes(ctx, points, radius, eyes, time, still) {
   for(let layer=0;layer<3;layer++) {
     const opacity=alpha*[.78,.92,1][layer];ctx.fillStyle=colors[layer];
     for(const m of marks)if(m.layer===layer){
-      ctx.globalAlpha=opacity*(1-m.blend);ctx.fillText(m.glyph,m.x,m.y);
-      if(m.blend>0){ctx.globalAlpha=opacity*m.blend;ctx.fillText(m.nextGlyph,m.x,m.y);}
+      const s=eyes.surface;
+      ctx.save();let shade=1;
+      if(s){const y=s.centerY+(m.y-s.centerY)*s.openness,p=projectEyePoint(m.x,y,s.centerY,s.yaw,s.pitch);
+        const px=projectEyePoint(m.x+.5,y,s.centerY,s.yaw,s.pitch),mx=projectEyePoint(m.x-.5,y,s.centerY,s.yaw,s.pitch),py=projectEyePoint(m.x,y+.5,s.centerY,s.yaw,s.pitch),my=projectEyePoint(m.x,y-.5,s.centerY,s.yaw,s.pitch);
+        ctx.transform(px.x-mx.x,px.y-mx.y,(py.x-my.x)*s.openness,(py.y-my.y)*s.openness,p.x,p.y);shade=.82+.18*p.facing;
+      }else ctx.translate(m.x,m.y);
+      ctx.globalAlpha=opacity*shade*(1-m.blend);ctx.fillText(m.glyph,0,0);
+      if(m.blend>0){ctx.globalAlpha=opacity*shade*m.blend;ctx.fillText(m.nextGlyph,0,0);}
+      ctx.restore();
     }
   }
   ctx.restore();
@@ -246,10 +254,10 @@ function animateExistingEyes(ctx,points,radius,eyes,time,still,label,centerY){
   const speed=eyes.blinkSpeed??1;
   const config={eyeBlinkInterval:5.1/Math.max(.35,speed),eyeBlinkDuration:180};
   const pose=eyeMotionAt(time,config,label,{still});
-  const openness=label==='Sleeping'||speed===0?1:pose.openness;
-  ctx.save();ctx.translate(pose.gaze.x,pose.gaze.y+centerY);
-  ctx.scale(1,Math.max(.045,openness));ctx.translate(0,-centerY);
-  asciiEyes(ctx,points,radius,eyes,time,still);ctx.restore();
+  const attention=eyes.facePose||(still?{yaw:0,pitch:0,expression:1,blink:1}:poseAt(time));
+  const sleeping=label==='Sleeping',openness=sleeping||speed===0?1:pose.openness*(attention.expression??1)*(attention.blink??1);
+  const gaze=eyes.gazeAmount??1;
+  asciiEyes(ctx,points,radius,{...eyes,surface:{centerY,yaw:sleeping?0:attention.yaw*gaze,pitch:sleeping?0:attention.pitch*gaze,openness:Math.max(.045,openness)}},time,still);
 }
 
 export function modeEyeShape(label,x,y,side,time=0,still=false){
@@ -355,6 +363,7 @@ export function renderSceneV2(ctx, {activity, definition, time = 0, reducedMotio
   const eyeColor=custom[(activity.mode||'live')+'Eye'];
   const paintedDefinition=workTheme?{...definition,body:{...definition.body,shadowColor:'#3b0605',highlightColor:'#fff4ef'},eyes:{...definition.eyes,color:eyeColor||'#361423',layers:['#9b4868','#62253e',eyeColor||'#361423']}}:playTheme?{...definition,body:{...definition.body,shadowColor:'#000306',highlightColor:'#071117',darkSurface:true},eyes:{...definition.eyes,color:eyeColor||'#dcfcff',layers:['#3988bf','#7bdcf6',eyeColor||'#dcfcff'],luminous:true}}:{...definition,eyes:{...definition.eyes,color:eyeColor||definition.eyes.color}};
   if(playTheme)e.color=custom.surfColor||'#01070b';
+  paintedDefinition.eyes={...paintedDefinition.eyes,facePose:motion.eyePose,gazeAmount:custom.gaze??1};
   ctx.save();ctx.filter=`saturate(${(custom.saturation??120)/100})`;
   ctx.fillStyle = custom[(activity.mode||'live')+'Background']||(workTheme?'#f2efed':playTheme?'#078fe3':'#050909'); ctx.fillRect(0, 0, 410, 502);
   ctx.save();
@@ -375,7 +384,7 @@ export function renderSceneV2(ctx, {activity, definition, time = 0, reducedMotio
     const faceY=237-attention*27;
     ctx.filter='none';
     // Eyes travel farther than the body, making the corner glance readable.
-    ctx.translate(reducedMotion?0:Math.max(-12,Math.min(12,motion.x*1.8))*(custom.gaze??1),reducedMotion?0:Math.max(-9,Math.min(9,motion.y*2))*(custom.gaze??1));
+    // Curved eye projection owns gaze; body and lighting keep their existing motion.
     if(greeting>.01) {
       ctx.save();ctx.globalAlpha=1-greeting;largeFace(ctx,paintedDefinition,e,t,presentation.task.eyeScale,faceY,reducedMotion);ctx.restore();
       ctx.save();ctx.globalAlpha=greeting;largeFace(ctx,paintedDefinition,definition.expressions.happy,t,presentation.task.eyeScale,faceY,reducedMotion);ctx.restore();

@@ -1,6 +1,6 @@
-const CACHE = 'studio-mascot-shell-v3-eye-motion';
+const CACHE = 'studio-mascot-shell-v4-curved-eyes';
 const SHELL = ['/app', '/simulator/style.css', '/simulator/app-view.js', '/simulator/app.js',
-  '/simulator/engine.js', '/simulator/renderer.js', '/simulator/eye-motion.js', '/character/expressions.json',
+  '/simulator/engine.js', '/simulator/renderer.js', '/simulator/eye-motion.js', '/simulator/eye-surface.js', '/character/expressions.json',
   '/scenes/behavior.json', '/manifest.webmanifest', '/icons/mascot.svg',
   '/icons/mascot-192.png', '/icons/mascot-512.png'];
 self.addEventListener('install', event => event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL))));
@@ -13,3 +13,4 @@ self.addEventListener('fetch', event => {
   if (url.origin !== self.location.origin || event.request.method !== 'GET' || !SHELL.includes(asset)) return;
   event.respondWith(fetch(event.request).catch(() => caches.match(asset)));
 });
+

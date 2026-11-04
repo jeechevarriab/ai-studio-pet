@@ -1,5 +1,6 @@
 import {MODES, initialState, validateDefinitions, validateRules, deriveActivity, swipeMode, stepTime, formatHour, ease, createPickupDetector} from './engine.js';
 import {renderScene} from './renderer.js';
+import {bindEyeAttention} from './eye-surface.js';
 import {setDitherPointer} from './color-finishes.js';
 import {DESIGN_DEFAULTS,designDefinition,resolveModeDesign,formatAlarmTime} from './design.js';
 import {connectDesignEditor} from './editor.js';
@@ -77,6 +78,7 @@ async function loadSurf() {
   } finally {surfPending = false;}
 }
 const motion = {x: 0, y: 0, targetX: 0, targetY: 0};
+let eyeAttention;
 const clamp = (value, limit) => Math.max(-limit, Math.min(limit, value));
 
 function cycleEyes(now = performance.now()) {
@@ -192,6 +194,7 @@ function frame(timestamp) {
     motion.y += (motion.targetY - motion.y) * smoothing;
   }
   const eyeBlend = reducedMotion.matches ? 1 : Math.min(1, Math.max(0,(timestamp-eyeChangedAt)/140));
+  if(eyeAttention&&!state.paused)motion.eyePose=eyeAttention.update(delta,time,reducedMotion.matches);
   const render = current => renderScene(ctx, {activity: current, definition:modeDefinitions[current.mode]||definition, time, reducedMotion: reducedMotion.matches, surf: state.surf, version: mascotVersion, motion, attention, touchEye:current.mode===state.mode?touchEye:-1, previousEye, eyeBlend, greeting});
   if (transition && !reducedMotion.matches) {
     const progress = Math.min(1, (timestamp - transition.started) / 330);
@@ -246,6 +249,7 @@ function connect() {
     const a = document.createElement('a'); a.href = url; a.download = 'ai-studio-pet-character.json'; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
   });
   const device = $('device');
+  if(mascotVersion==='v2')eyeAttention=bindEyeAttention(device,()=>attention,()=>customDesign.zoom??1.3);
   if (mascotVersion === 'v2') device.setAttribute('aria-label', 'Studio Mascot. Touch or press Enter to reveal controls. Swipe or use arrow keys to change mode.');
   device.addEventListener('pointermove', e => {
     if (mascotVersion !== 'v2') return;

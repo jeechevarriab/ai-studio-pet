@@ -30,6 +30,7 @@ const assets = new Map([
   ['/simulator/style.css', ['simulator/style.css', 'text/css']],
   ['/simulator/app.js', ['simulator/app.js', 'text/javascript']],
   ['/simulator/engine.js', ['simulator/engine.js', 'text/javascript']],
+  ['/simulator/eye-surface.js', ['simulator/eye-surface.js', 'text/javascript']],
   ['/simulator/eye-motion.js', ['simulator/eye-motion.js', 'text/javascript']],
   ['/simulator/renderer.js', ['simulator/renderer.js', 'text/javascript']],
   ['/character/expressions.json', ['character/expressions.json', 'application/json']],
@@ -70,3 +71,4 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   server.on('error', error => {console.error('PET preview: ' + error.message); process.exitCode = 1;});
   server.listen(port, '127.0.0.1', () => console.log('AI STUDIO PET · Local: http://127.0.0.1:' + port));
 }
+
