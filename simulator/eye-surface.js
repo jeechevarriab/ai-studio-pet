@@ -37,9 +37,9 @@ export function bindEyeAttention(device,getAttention,getZoom=()=>1.3){
   let yaw=still?0:idle.yaw,pitch=still?0:idle.pitch;
   if(attention>.01){yaw=0;pitch=-.24*attention;}
   if(target.active){const zoom=1+attention*(getZoom()-1),faceY=249+attention*231+(237-attention*27-249)*zoom;
-   yaw=Math.max(-.24,Math.min(.24,(target.x-205)/(195*zoom)));
-   pitch=Math.max(-.24,Math.min(.22,(target.y-faceY)/(195*zoom)));}
-  const u=still?1:1-Math.exp(-Math.min(delta,100)/85);
+   yaw=.4*Math.max(-.24,Math.min(.24,(target.x-205)/(195*zoom)));
+   pitch=.4*Math.max(-.24,Math.min(.22,(target.y-faceY)/(195*zoom)));}
+  const u=still?1:1-Math.exp(-Math.min(delta,100)/(target.active?150:85));
   pose.yaw+=(yaw-pose.yaw)*u;pose.pitch+=(pitch-pose.pitch)*u;
   return {...pose,expression:still||target.active||attention>.01?1:idle.expression,blink:still||target.active||attention>.01?1:idle.blink};
  }};

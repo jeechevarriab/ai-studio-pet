@@ -279,8 +279,8 @@ function connect() {
     }
     const rect = device.getBoundingClientRect();
     lastPointerMotion = performance.now();
-    motion.targetX = clamp(((e.clientX - rect.left) / rect.width - .5) * 12, 6);
-    motion.targetY = clamp(((e.clientY - rect.top) / rect.height - .5) * 8, 4);
+    motion.targetX = clamp(((e.clientX - rect.left) / rect.width - .5) * 4.8, 2.4);
+    motion.targetY = clamp(((e.clientY - rect.top) / rect.height - .5) * 3.2, 1.6);
   });
   device.addEventListener('pointerleave', () => {motion.targetX = 0; motion.targetY = 0;setDitherPointer(state.mode,{inside:false,time});});
   device.addEventListener('click', e => {

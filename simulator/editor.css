@@ -96,9 +96,9 @@ html.customizing, .customizing body{background:#08090b;color:#f6f6f7;color-schem
 .dither-color-suggestions{gap:8px}.dither-color-suggestions .dither-color-chip{width:30px;height:30px;min-height:30px}
 .customizing .device{touch-action:pan-y}
 @media(max-width:980px){.customizing .dither-hex-row input,.customizing .parameter-text,.customizing .dither-number,.customizing .dither-control select{font-size:16px}.parameter-line .dither-number{width:48px}.editor-shell{padding-bottom:env(safe-area-inset-bottom)}.editor-actions button{min-height:44px}.editor-tabs{scroll-margin-top:12px}.dither-control,.parameter-line{scroll-margin-top:116px}}
-.app-only .customize-link{top:8%;min-height:36px;min-width:82px;display:inline-flex;align-items:center;justify-content:center;font-size:11px}
-.app-only .device-header{top:4.8%}.app-only .device-bottom{top:calc(8% + 40px)}.app-only .mode-nav button{min-height:40px;padding:8px 3px;font-size:clamp(11px,3cqw,14px);letter-spacing:.05em}
-.app-only .studio-panel,.app-only .sleep-panel,.app-only .play-panel{top:calc(8% + 86px)}
+.app-only .customize-link{top:8%;min-height:28px;min-width:82px;display:inline-flex;align-items:center;justify-content:center;font-size:11px}
+.app-only .device-header{top:4.8%}.app-only .device-bottom{top:calc(8% + 30px)}.app-only .mode-nav button{min-height:40px;padding:8px 3px;font-size:clamp(11px,3cqw,14px);letter-spacing:.05em}
+.app-only .studio-panel,.app-only .sleep-panel,.app-only .play-panel{top:calc(8% + 76px)}
 
 /* Tapping the info card opens its app; native links keep normal keyboard behavior. */
 .app-launch-panel{padding-bottom:38px;isolation:isolate}
