@@ -96,6 +96,17 @@ html.customizing, .customizing body{background:#08090b;color:#f6f6f7;color-schem
 .dither-color-suggestions{gap:8px}.dither-color-suggestions .dither-color-chip{width:30px;height:30px;min-height:30px}
 .customizing .device{touch-action:pan-y}
 @media(max-width:980px){.customizing .dither-hex-row input,.customizing .parameter-text,.customizing .dither-number,.customizing .dither-control select{font-size:16px}.parameter-line .dither-number{width:48px}.editor-shell{padding-bottom:env(safe-area-inset-bottom)}.editor-actions button{min-height:44px}.editor-tabs{scroll-margin-top:12px}.dither-control,.parameter-line{scroll-margin-top:116px}}
-.app-only .customize-link{top:9%;min-height:36px;min-width:82px;display:inline-flex;align-items:center;justify-content:center;font-size:11px}
-.app-only .device-bottom{top:20%}.app-only .mode-nav button{min-height:40px;padding:8px 3px;font-size:clamp(11px,3cqw,14px);letter-spacing:.05em}
-.app-only .studio-panel,.app-only .sleep-panel,.app-only .play-panel{top:33%}
+.app-only .customize-link{top:8%;min-height:36px;min-width:82px;display:inline-flex;align-items:center;justify-content:center;font-size:11px}
+.app-only .device-header{top:4.8%}.app-only .device-bottom{top:calc(8% + 40px)}.app-only .mode-nav button{min-height:40px;padding:8px 3px;font-size:clamp(11px,3cqw,14px);letter-spacing:.05em}
+.app-only .studio-panel,.app-only .sleep-panel,.app-only .play-panel{top:calc(8% + 86px)}
+
+/* Tapping the info card opens its app; native links keep normal keyboard behavior. */
+.app-launch-panel{padding-bottom:38px;isolation:isolate}
+.panel-open{position:absolute;inset:0;display:flex;align-items:flex-end;color:var(--page-text,#e6f7ff);text-decoration:none;z-index:1;border-radius:8px}
+.panel-open span{display:inline-flex;align-items:center;min-height:36px;font:11px/1.3 var(--mono);text-decoration:underline;text-underline-offset:3px}
+.panel-open:focus-visible{outline:2px solid currentColor;outline-offset:5px}
+.panel-launch-setup{position:absolute;right:0;bottom:0;z-index:2;min-height:36px;padding:4px 0 4px 10px;color:var(--page-muted,#bad2e3);font-size:10px}
+.panel-launch-setup[hidden]{display:none}.play-source a{position:relative;z-index:2}
+.app-launch-dialog{color-scheme:dark;box-sizing:border-box;width:min(440px,calc(100vw - 32px));max-height:calc(100dvh - 40px);overflow:auto;padding:22px;border:1px solid #3a4652;border-radius:20px;background:#14171c;color:#edf4fa;font:14px/1.5 Inter,Arial,sans-serif}
+.app-launch-dialog::backdrop{background:#000b}.app-launch-dialog h2{font-size:21px;margin:0 0 16px;padding-right:55px}.app-launch-dialog p{margin:12px 0}.app-launch-dialog ol{padding-left:20px}.app-launch-dialog li{margin:10px 0}.app-launch-dialog .app-launch-note{font-size:12px;color:#aebeca}
+.app-launch-close{float:right;min-height:40px;color:#c6d9e6;font-size:13px}.app-launch-actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:20px}.app-launch-actions a,.app-launch-actions button{display:inline-flex;align-items:center;min-height:44px;border-radius:10px;border:1px solid #3a4652;background:#1d2b37;padding:10px 12px;color:#d7edfc;text-decoration:none;font-size:13px}.app-launch-actions button{background:#d0edff;color:#122432}

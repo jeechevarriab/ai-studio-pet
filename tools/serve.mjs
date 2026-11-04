@@ -28,6 +28,8 @@ const assets = new Map([
   ['/icons/mascot-192.png', ['simulator/icons/mascot-192.png', 'image/png']],
   ['/icons/mascot-512.png', ['simulator/icons/mascot-512.png', 'image/png']],
   ['/simulator/style.css', ['simulator/style.css', 'text/css']],
+  ['/simulator/app-links.js', ['simulator/app-links.js', 'text/javascript']],
+  ['/simulator/surf-reader.js', ['tools/surf.mjs', 'text/javascript']],
   ['/simulator/app.js', ['simulator/app.js', 'text/javascript']],
   ['/simulator/engine.js', ['simulator/engine.js', 'text/javascript']],
   ['/simulator/eye-surface.js', ['simulator/eye-surface.js', 'text/javascript']],
