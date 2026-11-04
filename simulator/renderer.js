@@ -373,7 +373,7 @@ function softBlob(ctx, image, time, still, amount=1) {
   ctx.translate(-205, -249); ctx.drawImage(image, 0, 0); ctx.restore();
 }
 
-export function renderSceneV2(ctx, {activity, definition, time = 0, reducedMotion = false, motion = {x:0,y:0}, touchEye = -1, greeting=0, manualBlinkAt=-Infinity, compareDefault=false, appearanceFrom=null, appearanceBlend=1}) {
+export function renderSceneV2(ctx, {activity, definition, time = 0, reducedMotion = false, motion = {x:0,y:0}, attention=0, touchEye = -1, greeting=0, manualBlinkAt=-Infinity, compareDefault=false, appearanceFrom=null, appearanceBlend=1}) {
   const presentation=definition.presentationV2||defaultPresentationV2,custom=presentation.custom||{};
   const e={...definition.expressions[activity.expression],color:(presentation.modeColors||defaultPresentationV2.modeColors)[activity.mode||'live']};
   const mode=activity.mode||'live',workTheme=mode==='work',playTheme=mode==='surf';
@@ -382,11 +382,15 @@ export function renderSceneV2(ctx, {activity, definition, time = 0, reducedMotio
   if(playTheme)e.color=custom.surfColor||'#01070b';
   ctx.save();ctx.filter=`saturate(${(custom.saturation??120)/100})`;
   ctx.fillStyle=custom[mode+'Background']||(workTheme?'#f2efed':playTheme?'#078fe3':'#050909');ctx.fillRect(0,0,410,502);
-  // Preserve the original material, colors, silhouette and lighting at its rest
-  // frame. Only eyes receive elapsed time, sensor/pointer gaze or attention.
+  // Preserve the original tap-to-menu translation and zoom. Resting material
+  // stays fixed; eye animation remains independent of this interaction pose.
+  ctx.save();ctx.translate(205,249+attention*231);
+  const zoom=1+attention*((custom.zoom??1.3)-1);
+  ctx.scale(zoom,zoom);ctx.translate(-205,-249);
   const body=floatingBody(paintedDefinition,e.color,0,mode,true);
   softBlob(ctx,litBody(body,paintedDefinition,{x:0,y:0},0,true,mode),0,true);
   ctx.filter='none';
+  ctx.translate(0,-attention*27);
   const t=reducedMotion?0:time,options={still:reducedMotion,touchEye,manualBlinkAt,motion,compareDefault};
   if(appearanceFrom&&appearanceBlend<1&&!compareDefault)
     renderUnifiedEyes(ctx,appearanceFrom,e,t,{...options,opacity:1-appearanceBlend});
@@ -395,6 +399,7 @@ export function renderSceneV2(ctx, {activity, definition, time = 0, reducedMotio
     renderUnifiedEyes(ctx,paintedDefinition,e,t,{...options,opacity:amount*(1-greeting)});
     renderUnifiedEyes(ctx,paintedDefinition,definition.expressions.happy,t,{...options,opacity:amount*greeting});
   }else renderUnifiedEyes(ctx,paintedDefinition,e,t,{...options,opacity:amount});
+  ctx.restore();
   ctx.restore();
 }
 

@@ -98,6 +98,7 @@ function revealControls(visible = true) {
   if (mascotVersion !== 'v2') return;
   $('device').classList.toggle('controls-visible', visible);
   attentionTarget = visible ? 1 : 0;
+  requestRender();
   if (!visible) activeNotice = null;
   $('device-message').hidden = !activeNotice || !visible;
   syncPlayPanel();
@@ -209,7 +210,7 @@ function frame(timestamp) {
     if (progress === 1) transition = null;
   } else render(activity);
   document.documentElement.classList.remove('design-pending');
-  if(!state.paused&&!reducedMotion.matches)requestRender();
+  if((!state.paused&&!reducedMotion.matches)||Math.abs(attention-attentionTarget)>.001)requestRender();
 }
 
 function connect() {
