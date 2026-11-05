@@ -230,3 +230,20 @@ export function designForApply(applied,draft,key=null){
  if(key!==null&&!Object.hasOwn(DESIGN_DEFAULTS,key))throw Error('Unknown design setting');
  return validateDesign(key===null?draft:{...applied,[key]:draft[key]});
 }
+
+// Owner-specified color tokens, in page order. Shared by saved-design migration and rendering.
+export const PAGE_PALETTES={
+ live:{background:'#DDD6FE',swirl:'#C4B5FD',accent:'#A78BFA',main:'#7C3AED',edge:'#312E81',eyes:'#FFFFFF'},
+ work:{background:'#BAE6FD',swirl:'#E0F2FE',accent:'#38BDF8',main:'#0284C7',edge:'#0C4A6E',eyes:'#FFFFFF'},
+ surf:{background:'#FCE7F3',swirl:'#FBCFE8',accent:'#F472B6',main:'#EC4899',edge:'#9D174D',eyes:'#FFFFFF'},
+ sleep:{background:'#FECACA',swirl:'#FEE2E2',accent:'#F87171',main:'#DC2626',edge:'#7F1D1D',eyes:'#FFFFFF'}
+};
+export function applyPagePalettes(input){
+ const next=structuredClone(input);
+ for(const [mode,p]of Object.entries(PAGE_PALETTES)){
+  next[mode+'Background']=p.background;next[mode+'Color']=p.main;next[mode+'Eye']=p.eyes;
+  const overrides=next.modeOverrides||={};const colors=overrides[mode]||={};
+  Object.assign(colors,{ditherPalette:'custom',ditherPaletteCount:4,ditherPalette1:p.edge,ditherPalette2:p.main,ditherPalette3:p.accent,ditherPalette4:p.swirl,ditherWaveColor:p.swirl,ditherBackground:p.edge});
+ }
+ return next;
+}

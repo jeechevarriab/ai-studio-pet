@@ -1,3 +1,4 @@
+import {PAGE_PALETTES} from './design.js';
 import {drawColorFinish,finishName} from './color-finishes.js';
 import {eyeMotionAt} from './eye-motion.js';
 import {projectEyePoint,poseAt} from './eye-surface.js';
@@ -159,10 +160,10 @@ export function floatingBody(definition, color, time, page = 'live', still=false
   const c = canvas.getContext('2d');
   c.setTransform(1,0,0,1,0,0); c.globalAlpha=1; c.globalCompositeOperation='source-over'; c.filter='none'; c.clearRect(0,0,410,502);
   const gradient = c.createRadialGradient(167,205,8,200,249,240);
-  gradient.addColorStop(0, mixColor(color,definition.body.highlightColor||'#f1fff9',Math.min(.9,.58*(definition.body.brightness??1))));
-  gradient.addColorStop(.34,definition.body.darkSurface?color:mixColor(color,'#ffffff',.22));
+  gradient.addColorStop(0, definition.body.pagePalette?.swirl||mixColor(color,definition.body.highlightColor||'#f1fff9',Math.min(.9,.58*(definition.body.brightness??1))));
+  gradient.addColorStop(.34,definition.body.pagePalette?.accent||(definition.body.darkSurface?color:mixColor(color,'#ffffff',.22)));
   gradient.addColorStop(.68,color);
-  gradient.addColorStop(1,color+'58');
+  gradient.addColorStop(1,(definition.body.pagePalette?.edge||color)+'58');
   c.fillStyle = gradient; c.fillRect(0, 0, 410, 502);
   drawColorFinish(c,{finish,time,page,settings,still});
   c.globalCompositeOperation='destination-in';c.drawImage(materialMask(width,height,radius,feather),0,0);
@@ -175,7 +176,7 @@ export function floatingBody(definition, color, time, page = 'live', still=false
   // Stable, irregular translucent pores; no animated noise, scanlines or hard grid.
   for(let y=85;y<430;y+=5)for(let x=18;x<398;x+=5) {
     const n=noise(x,y),m=cloud(x/19,y/19);
-    c.globalAlpha=(definition.body.darkSurface ? .009+m*.012 : .035+m*.045)*(definition.body.texture??1);c.fillStyle=n>.45?'#ffffff':'#082b30';
+    c.globalAlpha=(definition.body.darkSurface ? .009+m*.012 : .035+m*.045)*(definition.body.texture??1);c.fillStyle=n>.45?(definition.body.pagePalette?.swirl||'#ffffff'):(definition.body.pagePalette?.edge||'#082b30');
     dot(c,x+(n-.5)*3,y+(noise(y,x)-.5)*3,.5+n*.65);
   }
   if(floatingCaches.size>=16&&!cached)floatingCaches.clear();
@@ -230,7 +231,7 @@ function asciiEyes(ctx, points, radius, eyes, time, still) {
   ctx.textAlign='center';ctx.textBaseline='middle';
   ctx.font=`600 ${Math.max(4.5,radius*2.85)}px ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace`;
   // Match PLAY's ink weight and edge softness on every page; only the tint varies.
-  ctx.shadowColor=eyes.luminous?'#61dcff':eyes.color;ctx.shadowBlur=1;
+  ctx.shadowColor=eyes.color?.toUpperCase()==='#FFFFFF'?eyes.color:eyes.luminous?'#61dcff':eyes.color;ctx.shadowBlur=1;
   for(let layer=0;layer<3;layer++) {
     const opacity=alpha*[.78,.92,1][layer];ctx.fillStyle=colors[layer];
     for(const m of marks)if(m.layer===layer){
@@ -361,10 +362,14 @@ export function renderSceneV2(ctx, {activity, definition, time = 0, reducedMotio
   const workTheme=activity.mode==='work';
   const playTheme=activity.mode==='surf';
   const eyeColor=custom[(activity.mode||'live')+'Eye'];
+  const requested=PAGE_PALETTES[activity.mode||'live'];
+  const pagePalette=requested&&custom.ditherPalette==='custom'&&[requested.edge,requested.main,requested.accent,requested.swirl].every((color,i)=>custom['ditherPalette'+(i+1)]?.toUpperCase()===color)?requested:null;
   const paintedDefinition=workTheme?{...definition,body:{...definition.body,shadowColor:'#3b0605',highlightColor:'#fff4ef'},eyes:{...definition.eyes,color:eyeColor||'#361423',layers:['#9b4868','#62253e',eyeColor||'#361423']}}:playTheme?{...definition,body:{...definition.body,shadowColor:'#000306',highlightColor:'#071117',darkSurface:true},eyes:{...definition.eyes,color:eyeColor||'#dcfcff',layers:['#3988bf','#7bdcf6',eyeColor||'#dcfcff'],luminous:true}}:{...definition,eyes:{...definition.eyes,color:eyeColor||definition.eyes.color}};
   if(playTheme)e.color=custom.surfColor||'#01070b';
+  if(pagePalette){e.color=pagePalette.main;paintedDefinition.body={...paintedDefinition.body,shadowColor:pagePalette.edge,highlightColor:pagePalette.swirl,pagePalette};}
+  if(eyeColor?.toUpperCase()==='#FFFFFF')paintedDefinition.eyes={...paintedDefinition.eyes,color:eyeColor,layers:[eyeColor,eyeColor,eyeColor]};
   paintedDefinition.eyes={...paintedDefinition.eyes,facePose:motion.eyePose,gazeAmount:custom.gaze??1};
-  ctx.save();ctx.filter=`saturate(${(custom.saturation??120)/100})`;
+  ctx.save();ctx.filter=`saturate(${pagePalette?1:(custom.saturation??120)/100})`;
   ctx.fillStyle = custom[(activity.mode||'live')+'Background']||(workTheme?'#f2efed':playTheme?'#078fe3':'#050909'); ctx.fillRect(0, 0, 410, 502);
   ctx.save();
     // A single floating treatment across LIVE, WORK, SURF and SLEEP.
